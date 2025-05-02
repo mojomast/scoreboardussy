@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true // Added strict mode here as well
+  },
+  "include": [
+    "vite.config.ts", 
+    "postcss.config.js", // Include PostCSS config
+    "tailwind.config.js" // Include Tailwind config
+  ]
+}

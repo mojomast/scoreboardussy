@@ -1,0 +1,30 @@
+{
+  "name": "improvscoreboard-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time full-screen scoreboard web app",
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "start": "cd server && npm start",
+    "test": "cd server && npm test"
+  },
+  "keywords": [
+    "scoreboard",
+    "real-time",
+    "react",
+    "nodejs",
+    "websocket",
+    "socket.io",
+    "tailwindcss"
+  ],
+  "author": "Cascade",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

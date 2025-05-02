@@ -1,0 +1,23 @@
+{
+  "title": "Contrôle du Tableau de Bord",
+  "teamNameLabel": "Nom de l'Équipe",
+  "teamNamePlaceholder": "Entrez le nom de l'équipe",
+  "teamColorLabel": "Couleur de l'Équipe",
+  "scoreLabel": "Score : {{score}}",
+  "incrementScoreBtn": "+1 Score",
+  "decrementScoreBtn": "-1 Score",
+  "penaltiesLabel": "Pénalités",
+  "addMajorPenaltyBtn": "+ Majeure ({{count}})",
+  "addMinorPenaltyBtn": "+ Mineure ({{count}})",
+  "resetPenaltiesBtn": "Réinitialiser Pénalités",
+  "resetAllBtn": "Tout Réinitialiser",
+  "openDisplayBtn": "Ouvrir Vue Affichage",
+  "disconnected": "DÉCONNECTÉ",
+  "loadingControls": "Chargement des contrôles...",
+  "connectingToServer": "Connexion au serveur...",
+  "languageSelectLabel": "Langue",
+  "languageEnglish": "Anglais",
+  "languageFrench": "Français",
+  "uploadLogoLabel": "Télécharger le logo",
+  "logoAltText": "Aperçu du logo actuel" 
+}

@@ -1,0 +1,45 @@
+{
+  "scoreboardControl": {
+    "title": "Scoreboard Control",
+    "teamNameLabel": "Team Name",
+    "teamNamePlaceholder": "Enter Team Name",
+    "teamColorLabel": "Team Color",
+    "scoreLabel": "Score: {{score}}",
+    "incrementScoreBtn": "+1 Score",
+    "decrementScoreBtn": "-1 Score",
+    "penaltiesLabel": "Penalties",
+    "addMajorPenaltyBtn": "+ Major ({{count}})",
+    "addMinorPenaltyBtn": "+ Minor ({{count}})",
+    "resetPenaltiesBtn": "Reset Penalties",
+    "resetAllBtn": "Reset All",
+    "openDisplayBtn": "Open Scoreboard",
+    "disconnected": "Disconnected",
+    "loadingControls": "Loading controls...",
+    "connectingToServer": "Connecting to server...",
+    "displayTextSectionTitle": "Display Text",
+    "titleTextLabel": "Title Text",
+    "footerTextLabel": "Footer Text",
+    "titleTextPlaceholder": "Enter title text...",
+    "footerTextPlaceholder": "Enter footer text...",
+    "updateTextBtn": "Update Display Text",
+    "titleColorLabel": "Title Color",
+    "titleSizeLabel": "Title Size",
+    "footerColorLabel": "Footer Color",
+    "footerSizeLabel": "Footer Size",
+    "languageSelectLabel": "Language",
+    "languageEnglish": "English",
+    "languageFrench": "French",
+    "uploadLogoLabel": "Upload Logo"
+  },
+  "scoreboardDisplay": {
+    "majorPenaltyLabel": "Major",
+    "minorPenaltyLabel": "Minor",
+    "fullscreenBtn": "Toggle Fullscreen",
+    "loadingDisplay": "Loading Scoreboard...",
+    "connectingToServer": "Connecting to server..."
+  },
+  "app": {
+    "unknownView": "Unknown View",
+    "unknownViewMsg": "Use <0>#/display</0> or <1>#/control</1>"
+  }
+}

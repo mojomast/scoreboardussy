@@ -1,0 +1,48 @@
+{
+  "scoreboardControl": {
+    "title": "Contrôle du Tableau de Bord",
+    "teamNameLabel": "Nom de l'Équipe",
+    "teamNamePlaceholder": "Entrez le nom de l'équipe",
+    "teamColorLabel": "Couleur de l'Équipe",
+    "scoreLabel": "Score : {{score}}",
+    "incrementScoreBtn": "+1 Score",
+    "decrementScoreBtn": "-1 Score",
+    "penaltiesLabel": "Pénalités",
+    "addMajorPenaltyBtn": "+ Majeure ({{count}})",
+    "addMinorPenaltyBtn": "+ Mineure ({{count}})",
+    "resetPenaltiesBtn": "Réinitialiser Pénalités",
+    "resetAllBtn": "Tout Réinitialiser",
+    "openDisplayBtn": "Ouvrir Vue Affichage",
+    "disconnected": "DÉCONNECTÉ",
+    "loadingControls": "Chargement des contrôles...",
+    "connectingToServer": "Connexion au serveur...",
+    "languageSelectLabel": "Langue",
+    "languageEnglish": "Anglais",
+    "languageFrench": "Français",
+    "uploadLogoLabel": "Télécharger le logo",
+    "displayTextSectionTitle": "Texte Affiché",
+    "titleTextLabel": "Texte du Titre",
+    "titleTextPlaceholder": "Entrez le texte du titre...",
+    "titleColorLabel": "Couleur du Titre",
+    "titleSizeLabel": "Taille du Titre",
+    "footerTextLabel": "Texte du Pied de Page",
+    "footerTextPlaceholder": "Entrez le texte du pied de page...",
+    "footerColorLabel": "Couleur du Pied de Page",
+    "footerSizeLabel": "Taille du Pied de Page",
+    "uploadLogoBtn": "Télécharger le logo",
+    "removeLogoBtn": "Supprimer le logo",
+    "logoAltText": "Aperçu du logo actuel",
+    "updateTextBtn": "Mettre à Jour le Texte Affiché"
+  },
+  "scoreboardDisplay": {
+    "majorPenaltyLabel": "Majeure",
+    "minorPenaltyLabel": "Mineure",
+    "fullscreenBtn": "Basculer Plein Écran",
+    "loadingDisplay": "Chargement du tableau de bord...",
+    "connectingToServer": "Connexion au serveur..."
+  },
+  "app": {
+    "unknownView": "Vue Inconnue",
+    "unknownViewMsg": "Utilisez <0>#/display</0> ou <1>#/control</1>"
+  }
+}
