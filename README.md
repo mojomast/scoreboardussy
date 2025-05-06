@@ -4,6 +4,8 @@
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
 [![React](https://img.shields.io/badge/Frontend-React-blue.svg)](https://reactjs.org/)  
 [![Express.js](https://img.shields.io/badge/Backend-Express.js-lightgrey.svg)](https://expressjs.com/)
+ 
+[Version Française](#version-française-)
 
 **Scoreboardussy** is a real-time, web-based scoreboard designed specifically for improv shows, providing dynamic score tracking and audience interaction features — with a separate control panel and audience display.
 
@@ -163,5 +165,121 @@ scoreboardussy/
 ## 📜 License
 
 MIT — see the [LICENSE](LICENSE) file.
+
+---
+
+# Version Française 🇫🇷
+
+**Scoreboardussy** est un tableau de pointage web en temps réel conçu spécifiquement pour les spectacles d'improvisation, offrant un suivi dynamique des scores et des fonctionnalités d'interaction avec le public — avec un panneau de contrôle et un affichage public distincts.
+
+---
+
+## ✨ Fonctionnalités
+
+- Mises à jour en temps réel via WebSockets (Socket.IO)
+- Panneau de contrôle et affichage public séparés
+- Équipes, titres et couleurs personnalisables
+- Téléchargement de logo
+- Suivi des pénalités majeures/mineures
+- Affichage des emojis de vote du public
+- Support anglais et français
+- Conception plein écran et adaptative (Tailwind CSS)
+
+---
+
+## 🛠️ Pile Technique
+
+**Frontend :** React, Vite, TypeScript, Tailwind CSS, Shadcn/UI, i18next  
+**Backend :** Node.js, Express, Socket.IO, TypeScript
+
+---
+
+## 🚀 Démarrage Rapide
+
+### Prérequis
+
+- **Node.js v18+** ([Télécharger ici](https://nodejs.org/))
+
+---
+
+### 1. Installation & Lancement (Mode Développement)
+
+Exécutez l'application localement pour les tests et modifications.
+
+```bash
+git clone <repository-url>
+cd scoreboardussy
+
+# Linux/macOS
+chmod +x install_deps.sh launch.sh
+./install_deps.sh
+./launch.sh
+
+# Windows
+install_deps.bat
+launch.bat
+```
+
+Ensuite, ouvrez :
+
+- **Panneau de Contrôle :** http://localhost:5173/#/control  
+- **Affichage du Scoreboard :** http://localhost:5173/  
+- **API Backend :** http://localhost:3001/
+
+---
+
+### 2. Déploiement sur un Réseau Local
+
+Utilisez ce mode pour exécuter le tableau de pointage depuis un ordinateur et y accéder depuis d'autres appareils sur le même réseau Wi-Fi ou Ethernet.
+
+#### Build et Démarrage (Mode Production)
+
+```bash
+# Linux/macOS
+chmod +x build.sh start_prod.sh
+./build.sh
+./start_prod.sh
+
+# Windows
+build.bat
+start_prod.bat
+```
+
+Ceci démarre le serveur sur `http://<votre-ip>:3001`
+
+#### Accès depuis d'Autres Appareils
+
+1. Trouvez l'IP locale de votre machine (ex: `192.168.1.42`)
+2. Ouvrez sur les autres appareils :
+   - `http://192.168.1.42:3001/` (Affichage)
+   - `http://192.168.1.42:3001/#/control` (Panneau de Contrôle)
+3. Assurez-vous que votre pare-feu autorise les connexions entrantes sur le port `3001`
+
+---
+
+### 3. Optionnel : Accès via Internet
+
+Pour les utilisateurs avancés, vous **pouvez** exposer l'application à Internet en utilisant :
+
+- La **redirection de port** sur votre routeur
+- Un proxy inverse comme **NGINX**
+- Un outil de tunnel comme **[ngrok](https://ngrok.com/)** ou **[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)**
+
+> ⚠️ Nous ne recommandons pas l'exposition directe à Internet depuis un appareil personnel. Utilisez un hébergeur sécurisé (comme Render, Railway, ou un VPS) pour un déploiement public.
+
+---
+
+## 🧪 Notes d'Utilisation
+
+- Les mises à jour en direct sont poussées automatiquement via WebSockets.
+- La langue peut être changée depuis le panneau de contrôle.
+- L'affichage supporte le mode plein écran (idéal pour projecteurs ou moniteurs).
+- Disposition entièrement adaptative (conviviale pour l'utilisation du panneau de contrôle sur mobile).
+
+---
+
+## 📜 Licence
+
+MIT — voir le fichier [LICENSE](LICENSE).
 
 ---
