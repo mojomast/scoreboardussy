@@ -50,6 +50,7 @@ cd scoreboardussy
 
 # Linux/macOS
 chmod +x install_deps.sh launch.sh
+*(Note: If Node.js/npm are not found, the scripts will offer to install them using `apt`, suitable for Debian/Ubuntu-based systems. Requires `sudo`.)*
 ./install_deps.sh
 ./launch.sh
 
@@ -75,6 +76,7 @@ Use this mode to run the scoreboard from one computer and access it from other d
 ```bash
 # Linux/macOS
 chmod +x build.sh start_prod.sh
+*(Note: If Node.js/npm are not found, the scripts will offer to install them using `apt`, suitable for Debian/Ubuntu-based systems. Requires `sudo`.)*
 ./build.sh
 ./start_prod.sh
 
@@ -214,6 +216,7 @@ cd scoreboardussy
 
 # Linux/macOS
 chmod +x install_deps.sh launch.sh
+*(Note : Si Node.js/npm ne sont pas trouvés, les scripts proposeront de les installer via `apt`, adapté aux systèmes basés sur Debian/Ubuntu. Nécessite `sudo`.)*
 ./install_deps.sh
 ./launch.sh
 
@@ -239,6 +242,7 @@ Utilisez ce mode pour exécuter le tableau de pointage depuis un ordinateur et y
 ```bash
 # Linux/macOS
 chmod +x build.sh start_prod.sh
+*(Note : Si Node.js/npm ne sont pas trouvés, les scripts proposeront de les installer via `apt`, adapté aux systèmes basés sur Debian/Ubuntu. Nécessite `sudo`.)*
 ./build.sh
 ./start_prod.sh
 

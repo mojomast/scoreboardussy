@@ -1,13 +1,53 @@
 @echo off
 REM Check if npm is installed
 where npm >nul 2>nul
+if %errorlevel% equ 0 (
+    echo npm found.
+    goto :NpmFound
+)
+
+echo Error: npm command not found.
+
+REM Check if winget is available
+where winget >nul 2>nul
 if %errorlevel% neq 0 (
-    echo Error: npm is not installed or not in PATH.
-    echo Please install Node.js (which includes npm) from https://nodejs.org/ and ensure it's added to your PATH.
+    echo winget command not found. Cannot attempt automatic installation.
+    goto :ShowManualInstallError
+)
+
+REM Prompt user to install via winget
+set /p "choice=Attempt to install Node.js (includes npm) using winget? [y/N] "
+if /i "%choice:~0,1%" neq "y" (
+    echo Skipping installation attempt.
+    goto :ShowManualInstallError
+)
+
+echo Attempting installation via winget (this may require administrator privileges)... 
+winget install Microsoft.NodeJS --accept-source-agreements --accept-package-agreements
+if %errorlevel% neq 0 (
+    echo winget installation failed. Please install Node.js/npm manually from https://nodejs.org/ and ensure it's in your PATH.
     pause
     goto :eof
 )
+
+echo winget installation command finished. Verifying npm...
+where npm >nul 2>nul
+if %errorlevel% neq 0 (
+    echo Installation via winget completed, but npm still not found in PATH. Please check for errors or ensure PATH is updated (you might need to restart this terminal).
+    pause
+    goto :eof
+)
+
+echo npm installed successfully via winget.
+
+:NpmFound
 echo Starting development servers for client and server...
 echo Access Control Panel: http://localhost:5173/control
 echo Access Scoreboard Display: http://localhost:5173/
 npm run dev
+goto :eof
+
+:ShowManualInstallError
+echo Please install Node.js (which includes npm) from https://nodejs.org/ and ensure it's added to your PATH.
+pause
+goto :eof
