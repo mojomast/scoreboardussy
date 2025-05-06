@@ -106,7 +106,7 @@ For advanced users, you **can** expose the app to the internet using:
 
 ## 📸 Screenshots
 
-![scoreboard]([image-url](Screenshot%202025-05-05%20222028.png)) ![control interface]([image-url](Screenshot%202025-05-05%20222019.png)) 
+![scoreboard]([image-url](Screenshot%202025-05-05%20222028.png) ![control interface]([image-url](Screenshot%202025-05-05%20222019.png) 
 
 ---
 
