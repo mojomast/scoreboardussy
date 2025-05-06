@@ -36,6 +36,7 @@
 ### Prerequisites
 
 - **Node.js v18+** ([Download here](https://nodejs.org/))
+- **IMPORTANT:** Node.js includes `npm` (Node Package Manager). Both Node.js and `npm` **must** be installed correctly and accessible in your system's PATH for the installation and launch scripts to work.
 
 ---
 
@@ -199,6 +200,7 @@ MIT — see the [LICENSE](LICENSE) file.
 ### Prérequis
 
 - **Node.js v18+** ([Télécharger ici](https://nodejs.org/))
+- **IMPORTANT:** Node.js includes `npm` (Node Package Manager). Both Node.js and `npm` **must** be installed correctly and accessible in your system's PATH for the installation and launch scripts to work.
 
 ---
 
