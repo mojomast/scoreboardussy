@@ -45,7 +45,7 @@
 Run the app locally for testing and editing.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/mojomast/scoreboardussy
 cd scoreboardussy
 
 # Linux/macOS
