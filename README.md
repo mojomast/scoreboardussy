@@ -106,7 +106,7 @@ For advanced users, you **can** expose the app to the internet using:
 
 ## 📸 Screenshots
 
-*(Add control panel and display screenshots here)*
+![scoreboard]([image-url](https://github.com/mojomast/scoreboardussy/blob/main/Screenshot%202025-05-05%20222028.png)) ![control interface]([image-url](https://github.com/mojomast/scoreboardussy/blob/main/Screenshot%202025-05-05%20222019.png)) 
 
 ---
 
