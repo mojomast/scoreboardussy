@@ -1,4 +1,3 @@
-
 # Scoreboardussy 🏆
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
@@ -6,7 +5,7 @@
 [![React](https://img.shields.io/badge/Frontend-React-blue.svg)](https://reactjs.org/)  
 [![Express.js](https://img.shields.io/badge/Backend-Express.js-lightgrey.svg)](https://expressjs.com/)
 
-**Scoreboardussy** is a real-time, web-based scoreboard designed for improv shows, sports events, and any scenario requiring dynamic score tracking — with a separate control panel and audience display.
+**Scoreboardussy** is a real-time, web-based scoreboard designed specifically for improv shows, providing dynamic score tracking and audience interaction features — with a separate control panel and audience display.
 
 ---
 
@@ -17,6 +16,7 @@
 - Customizable teams, titles, and colors
 - Logo upload
 - Major/minor penalty tracking
+- Crowd voting emoji display
 - English and French support
 - Fullscreen and responsive design (Tailwind CSS)
 
