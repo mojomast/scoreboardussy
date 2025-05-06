@@ -1,189 +1,187 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { socket } from '@/socket'; // Use path alias for socket
+import { createContext, useState, useEffect, useCallback, useContext, ReactNode, useMemo } from 'react';
+import { io, Socket } from 'socket.io-client';
 import {
     ScoreboardState,
-    UpdateTeamPayload,
     UpdateScorePayload,
     UpdatePenaltyPayload,
     ResetPenaltiesPayload,
     Team,
     UpdateTextPayload,
-    UpdateTextStylePayload // Import UpdateTextStylePayload
-} from '@server-types/index'; // Use path alias for server types
+    UpdateTextStylePayload,
+    UpdateLogoSizePayload,
+    UpdateVisibilityPayload
+} from '@server-types/index'; 
 
 // Define the shape of the context value
 interface ScoreboardContextType {
+    state: ScoreboardState | null; 
     isConnected: boolean;
-    state: ScoreboardState | null;
-    updateTeam: (payload: UpdateTeamPayload) => void;
-    updateScore: (teamId: 'team1' | 'team2', action: number) => void;
+    updateTeam: (payload: { teamId: 'team1' | 'team2', updates: Partial<Pick<Team, 'name' | 'color'>> }) => void;
+    updateScore: (payload: UpdateScorePayload) => void;
     updatePenalty: (payload: UpdatePenaltyPayload) => void;
     resetPenalties: (payload: ResetPenaltiesPayload) => void;
-    resetAll: () => void;
     getTeam: (teamId: 'team1' | 'team2') => Team | undefined;
-    logoUrl: string | null;
     updateLogo: (newLogoUrl: string | null) => void;
     updateText: (payload: UpdateTextPayload) => void;
-    updateTextStyle: (payload: UpdateTextStylePayload) => void; // Add text style update function
+    updateTextStyle: (payload: UpdateTextStylePayload) => void;
+    updateLogoSize: (payload: UpdateLogoSizePayload) => void; 
+    updateVisibility: (payload: UpdateVisibilityPayload) => void; 
+    resetAll: () => void;
+    switchTeamEmojis: () => void; // ADDED
 }
 
 // Create the context with a default value (usually null or a placeholder)
 const ScoreboardContext = createContext<ScoreboardContextType | undefined>(undefined);
 
-// Define the props for the provider component
-interface ScoreboardProviderProps {
-    children: ReactNode;
-}
-
-// Default initial state (can be shown while loading)
-const defaultState: ScoreboardState = {
+// Define the initial state for the client-side representation
+const initialClientState: ScoreboardState = {
     team1: {
         id: 'team1',
         name: 'Team 1',
-        color: '#cccccc',
+        color: '#0000FF', 
         score: 0,
         penalties: { major: 0, minor: 0 },
     },
     team2: {
         id: 'team2',
         name: 'Team 2',
-        color: '#cccccc',
+        color: '#FF0000', 
         score: 0,
         penalties: { major: 0, minor: 0 },
     },
     logoUrl: null,
-    titleText: null,
-    footerText: null,
+    logoSize: 50, 
+    titleText: 'Scoreboard', 
+    footerText: '', 
+    titleTextColor: '#FFFFFF', 
+    titleTextSize: 2, 
+    footerTextColor: '#FFFFFF', 
+    footerTextSize: 1.25, 
+    titleStyle: { color: '#000000', sizeRem: 2 }, 
+    footerStyle: { color: '#000000', sizeRem: 1 }, 
+    showScore: true, 
+    showPenalties: true 
 };
 
-// Create the provider component
-export const ScoreboardProvider: React.FC<ScoreboardProviderProps> = ({ children }) => {
-    const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
-    const [state, setState] = useState<ScoreboardState | null>(null);
-    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+// Create a provider component
+export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [state, setState] = useState<ScoreboardState | null>(initialClientState); 
+    const [isConnected, setIsConnected] = useState<boolean>(false);
 
-    // --- WebSocket Connection and State Handling ---
     useEffect(() => {
-        // Listener for connection status
-        const onConnect = () => setIsConnected(true);
-        const onDisconnect = () => setIsConnected(false);
+        const serverUrl = import.meta.env.MODE === 'production'
+            ? window.location.origin 
+            : 'http://localhost:3001'; 
 
-        // Listener for receiving the full state (initial or requested)
-        const onInitialState = (initialState: ScoreboardState) => {
+        const newSocket = io(serverUrl, {
+            transports: ['websocket'], 
+        });
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+            setIsConnected(true);
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.log('Disconnected from WebSocket server:', reason);
+            setIsConnected(false);
+        });
+
+        newSocket.on('connect_error', (error) => {
+            console.error('Connection Error:', error);
+            setIsConnected(false);
+        });
+
+        const handleInitialState = (initialState: ScoreboardState) => {
             console.log('Received initial state:', initialState);
             setState(initialState);
-            setLogoUrl(initialState.logoUrl);
         };
 
-        // Listener for receiving state updates
-        const onUpdateState = (updatedState: ScoreboardState) => {
+        const handleStateUpdate = (updatedState: ScoreboardState) => {
             console.log('Received state update:', updatedState);
             setState(updatedState);
-            setLogoUrl(updatedState.logoUrl);
         };
 
-        // Register listeners
-        socket.on('connect', onConnect);
-        socket.on('disconnect', onDisconnect);
-        socket.on('initialState', onInitialState);
-        socket.on('updateState', onUpdateState);
+        newSocket.on('initialState', handleInitialState);
+        newSocket.on('updateState', handleStateUpdate); 
 
-        // Attempt to connect if not already connected
-        if (!socket.connected) {
-            console.log('Attempting to connect socket...');
-            socket.connect();
-        }
-
-        // Cleanup function: remove listeners and disconnect on unmount
         return () => {
-            console.log('Cleaning up socket listeners and disconnecting...');
-            socket.off('connect', onConnect);
-            socket.off('disconnect', onDisconnect);
-            socket.off('initialState', onInitialState);
-            socket.off('updateState', onUpdateState);
-            // Optional: disconnect if this provider is unmounted globally
-            // socket.disconnect(); 
+            console.log('Cleaning up WebSocket connection');
+            newSocket.off('connect');
+            newSocket.off('disconnect');
+            newSocket.off('connect_error');
+            newSocket.off('initialState', handleInitialState);
+            newSocket.off('updateState', handleStateUpdate); 
+            newSocket.close();
         };
-    }, []); // Empty dependency array ensures this runs only once on mount/unmount
-
-    // --- Action Emitters (Memoized with useCallback) ---
-    const updateTeam = useCallback((payload: UpdateTeamPayload) => {
-        console.log('Emitting updateTeam:', payload);
-        socket.emit('updateTeam', payload);
     }, []);
 
-    const updateScore = useCallback((teamId: 'team1' | 'team2', action: number) => {
-        if (action > 0) {
-            action = 1;
-        } else if (action < 0) {
-            action = -1;
-        } else {
-            return; // Do nothing if action is 0
-        }
+    const updateTeam = useCallback((payload: { teamId: 'team1' | 'team2', updates: Partial<Pick<Team, 'name' | 'color'>> }) => {
+        socket?.emit('updateTeam', payload);
+    }, [socket]);
 
-        const payload: UpdateScorePayload = { teamId, action };
-        console.log('Emitting updateScore:', payload);
-        socket.emit('updateScore', payload);
-    }, []);
+    const updateScore = useCallback((payload: UpdateScorePayload) => {
+        socket?.emit('updateScore', payload);
+    }, [socket]);
 
     const updatePenalty = useCallback((payload: UpdatePenaltyPayload) => {
-        console.log('Emitting updatePenalty:', payload);
-        socket.emit('updatePenalty', payload);
-    }, []);
+        socket?.emit('updatePenalty', payload);
+    }, [socket]);
 
     const resetPenalties = useCallback((payload: ResetPenaltiesPayload) => {
-        console.log('Emitting resetPenalties:', payload);
-        socket.emit('resetPenalties', payload);
-    }, []);
+        socket?.emit('resetPenalties', payload);
+    }, [socket]);
 
     const resetAll = useCallback(() => {
-        if (socket && isConnected) {
-            console.log('Emitting resetAll');
-            socket.emit('resetAll');
-            setLogoUrl(null); // Reset local logo state
-        } else {
-             console.warn('Socket not connected, cannot reset.');
-        }
-    }, [socket, isConnected]);
+        socket?.emit('resetAll');
+    }, [socket]);
 
     const getTeam = useCallback((teamId: 'team1' | 'team2'): Team | undefined => {
         return state ? state[teamId] : undefined;
     }, [state]);
 
     const updateLogo = useCallback((newLogoUrl: string | null) => {
-        console.log('Emitting updateLogo:', newLogoUrl ? newLogoUrl.substring(0, 50) + '...' : 'null');
-        socket.emit('updateLogo', newLogoUrl);
-    }, []);
+        socket?.emit('updateLogo', newLogoUrl);
+    }, [socket]); 
+
+    const updateLogoSize = useCallback((payload: UpdateLogoSizePayload) => {
+        socket?.emit('updateLogoSize', payload);
+    }, [socket]); 
 
     const updateText = useCallback((payload: UpdateTextPayload) => {
-        if (socket && payload.field && (payload.text === null || typeof payload.text === 'string')) {
-            console.log(`Emitting updateText:`, payload);
-            socket.emit('updateText', payload);
-        } else {
-            console.error('Invalid payload for updateText or socket not available:', payload);
-        }
-    }, [socket]);
+        socket?.emit('updateText', payload);
+    }, [socket]); 
 
     const updateTextStyle = useCallback((payload: UpdateTextStylePayload) => {
-        console.log('Emitting updateTextStyle:', payload);
-        socket.emit('updateTextStyle', payload);
-    }, []); // Add text style update function
+        socket?.emit('updateTextStyle', payload);
+    }, [socket]); 
 
-    // Memoize context value
+    const updateVisibility = useCallback((payload: UpdateVisibilityPayload) => {
+        socket?.emit('updateVisibility', payload);
+    }, [socket]);
+
+    const switchTeamEmojis = useCallback(() => {
+        socket?.emit('switchTeamEmojis');
+    }, [socket]);
+
     const contextValue = useMemo(() => ({
+        state,
         isConnected,
-        state: state ?? defaultState, // Provide default state if null
         updateTeam,
         updateScore,
         updatePenalty,
         resetPenalties,
-        resetAll,
         getTeam,
-        logoUrl,
         updateLogo,
         updateText,
-        updateTextStyle // Add updateTextStyle
-    }), [state, isConnected, updateTeam, updateScore, updatePenalty, resetPenalties, resetAll, updateLogo, logoUrl, updateText, updateTextStyle]);
+        updateTextStyle,
+        updateLogoSize, 
+        updateVisibility, 
+        resetAll,
+        switchTeamEmojis
+    }), [state, isConnected, updateTeam, updateScore, updatePenalty, resetPenalties, getTeam, updateLogo, updateText, updateTextStyle, updateLogoSize, updateVisibility, resetAll, switchTeamEmojis]); 
 
     return (
         <ScoreboardContext.Provider value={contextValue}>
@@ -192,8 +190,7 @@ export const ScoreboardProvider: React.FC<ScoreboardProviderProps> = ({ children
     );
 };
 
-// Custom hook for easy consumption of the context
-export const useScoreboard = (): ScoreboardContextType => {
+export const useScoreboard = () => {
     const context = useContext(ScoreboardContext);
     if (context === undefined) {
         throw new Error('useScoreboard must be used within a ScoreboardProvider');

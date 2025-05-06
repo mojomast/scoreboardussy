@@ -5,78 +5,101 @@ import { useScoreboard } from '@/contexts/ScoreboardContext';
 
 interface TeamControlPanelProps {
     team: Team;
+    teamId: "team1" | "team2";
 }
 
 /**
  * Provides controls for updating a single team's name, color, score, and penalties.
  */
-const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team }) => {
-    const { t } = useTranslation(); 
+const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team, teamId }) => {
+    const { t } = useTranslation();
     const { updateTeam, updateScore, updatePenalty, resetPenalties } = useScoreboard();
-    const [nameInput, setNameInput] = useState<string>(team.name);
+    const [localName, setLocalName] = useState<string>(team.name || '');
     const [colorInput, setColorInput] = useState<string>(team.color);
 
-    // Debounce handler for name/color changes to avoid excessive updates
-    const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const newName = e.target.value;
-        setNameInput(newName);
-        // Simple debounce: Update only if typing stops for a bit (e.g., 500ms)
-        // A more robust solution might use lodash.debounce
-        const timerId = setTimeout(() => {
-            if (newName.trim() && newName !== team.name) {
-                updateTeam({ teamId: team.id, name: newName });
-            }
-        }, 500);
-        return () => clearTimeout(timerId); // Cleanup timeout on re-render or unmount
-    }, [team.id, team.name, updateTeam]);
+    // Effect to update localName when the team name prop changes from the parent
+    useEffect(() => {
+        setLocalName(team.name || '');
+    }, [team.name]);
+
+    // Update local state only when typing
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setLocalName(e.target.value);
+    };
+
+    // Handler for the update button
+    const handleUpdateNameClick = () => {
+        if (localName.trim() !== '' && localName !== team.name) {
+            updateTeam({ teamId: teamId, updates: { name: localName.trim() } });
+        }
+        // Optionally add feedback, like disabling button briefly or showing success
+    };
 
     const handleColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newColor = e.target.value;
         setColorInput(newColor);
         // Update immediately on color change
         if (newColor !== team.color) {
-             updateTeam({ teamId: team.id, color: newColor });
+             updateTeam({ teamId: teamId, updates: { color: newColor } });
         }
-    }, [team.id, team.color, updateTeam]);
+    }, [teamId, team.color, updateTeam]);
 
     // Update local state when context state changes (e.g., after resetAll)
     useEffect(() => {
-        setNameInput(team.name);
         setColorInput(team.color);
     }, [team]);
 
     // Handlers for score updates
-    const handleIncrementScore = () => updateScore(team.id, 1); // Call with teamId, action
-    const handleDecrementScore = () => updateScore(team.id, -1); // Call with teamId, action
+    const handleScoreChange = (actionValue: number) => {
+        // Ensure action is only +1 or -1
+        const action = Math.sign(actionValue) as 1 | -1; 
+        updateScore({ teamId: teamId, action }); // action is now a number
+    };
+
+    const handleIncrementScore = () => handleScoreChange(1); 
+    const handleDecrementScore = () => handleScoreChange(-1); 
 
     // Handlers for penalty updates
-    const handleAddMajorPenalty = () => updatePenalty({ teamId: team.id, type: 'major', action: 1 });
-    const handleAddMinorPenalty = () => updatePenalty({ teamId: team.id, type: 'minor', action: 1 });
+    const handleAddMajorPenalty = () => updatePenalty({ teamId: teamId, type: 'major', action: 1 }); // action is 1
+    const handleAddMinorPenalty = () => updatePenalty({ teamId: teamId, type: 'minor', action: 1 }); // action is 1
 
     // Handler for resetting penalties
-    const handleResetPenalties = () => resetPenalties({ teamId: team.id });
+    const handleResetPenalties = () => resetPenalties({ teamId: teamId });
 
     return (
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 w-full mb-6">
-            {/* Team Name Input */}
+            {/* Team Title */}
+             <h3 className="text-lg font-semibold mb-4 border-b pb-2 dark:text-white dark:border-gray-600">
+                {t('teamControl.title')} - {team.name || teamId}
+            </h3>
+            {/* Team Name Input & Button */}
             <div className="mb-4">
                 <label htmlFor={`${team.id}-name`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('scoreboardControl.teamNameLabel')}
+                    {t('teamControl.teamNameLabel')}
                 </label>
-                <input
-                    type="text"
-                    id={`${team.id}-name`}
-                    value={nameInput}
-                    onChange={handleNameChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                    placeholder={t('scoreboardControl.teamNamePlaceholder')} 
-                />
+                <div className="flex items-center space-x-2"> 
+                    <input 
+                        type="text"
+                        id={`${team.id}-name`}
+                        value={localName}
+                        onChange={handleNameChange}
+                        className="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                        placeholder={t('teamControl.teamNamePlaceholder')}
+                    />
+                    <button 
+                        onClick={handleUpdateNameClick}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                        disabled={localName === team.name || localName.trim() === ''} 
+                    >
+                        {t('teamControl.updateNameBtn')}
+                    </button>
+                </div>
             </div>
 
             {/* Team Color Input */}
             <div className="mb-6">
                 <label htmlFor={`${team.id}-color`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('scoreboardControl.teamColorLabel')}
+                    {t('teamControl.teamColorLabel')}
                 </label>
                 <input
                     type="color"
@@ -90,14 +113,14 @@ const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team }) => {
             {/* Score Controls */}
             <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t('scoreboardControl.scoreLabel', { score: team.score })} 
+                    {t('teamControl.scoreLabel', { score: team.score })}
                 </label>
                 <div className="flex space-x-3">
                     <button onClick={handleIncrementScore} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                        {t('scoreboardControl.incrementScoreBtn')} 
+                        {t('teamControl.addPointBtn')}
                     </button>
                     <button onClick={handleDecrementScore} disabled={team.score <= 0} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                        {t('scoreboardControl.decrementScoreBtn')} 
+                        {t('teamControl.subtractPointBtn')}
                     </button>
                 </div>
             </div>
@@ -105,18 +128,18 @@ const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team }) => {
             {/* Penalty Controls */}
             <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t('scoreboardControl.penaltiesLabel')} 
+                    {t('teamControl.penaltiesLabel')}
                 </label>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                     <button onClick={handleAddMajorPenalty} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                        {t('scoreboardControl.addMajorPenaltyBtn', { count: team.penalties.major })} 
+                        {t('teamControl.addMajorPenaltyBtn', { count: team.penalties.major })}
                     </button>
                     <button onClick={handleAddMinorPenalty} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                        {t('scoreboardControl.addMinorPenaltyBtn', { count: team.penalties.minor })} 
+                        {t('teamControl.addMinorPenaltyBtn', { count: team.penalties.minor })}
                     </button>
                 </div>
                 <button onClick={handleResetPenalties} className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                    {t('scoreboardControl.resetPenaltiesBtn')} 
+                    {t('teamControl.clearPenaltiesBtn')}
                 </button>
             </div>
         </div>

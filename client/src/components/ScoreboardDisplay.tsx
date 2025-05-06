@@ -10,8 +10,23 @@ import { useTranslation } from 'react-i18next';
  */
 const ScoreboardDisplay: React.FC = () => {
     const { t } = useTranslation(); // Initialize hook
-    const { state, isConnected, logoUrl } = useScoreboard(); // Destructure state
-    const { team1, team2, titleText, footerText, titleTextColor, titleTextSize, footerTextColor, footerTextSize } = state || {}; // Safely destructure, provide default empty object if state is null
+    const { state, isConnected } = useScoreboard(); // Destructure state
+    const { 
+        team1, 
+        team2, 
+        titleText, 
+        footerText, 
+        titleTextColor, 
+        titleTextSize, 
+        footerTextColor, 
+        footerTextSize, 
+        logoSize,
+        showScore, // Destructure here
+        showPenalties, // Destructure here
+        showEmojis, // Destructure here
+        team1Emoji, // Destructure here
+        team2Emoji // Destructure here
+    } = state || {}; // Safely destructure, provide default empty object if state is null
     const [isFullScreen, setIsFullScreen] = useState<boolean>(!!document.fullscreenElement);
 
     // Effect to listen for fullscreen changes (e.g., user pressing ESC)
@@ -79,40 +94,61 @@ const ScoreboardDisplay: React.FC = () => {
                 )}
             </div>
 
-            {/* Team Panels Container (Should fill remaining space) */}
+            {/* Team Panels Container (Should fill remaining space) */} 
             {/* Ensure this container and its children fill the height */} 
-            <div className="relative flex-1 flex flex-row w-full h-full"> 
+            <div className="relative flex-1 flex flex-row w-full"> 
                  {/* Wrap each panel in a div that grows and fills height */} 
                  <div className="flex-1 h-full"> 
-                     {team1 && <TeamDisplayPanel team={team1} />}
-                 </div>
+                     {team1 && (
+                        <TeamDisplayPanel 
+                            team={team1} 
+                            showScore={showScore} // PASS PROP
+                            showPenalties={showPenalties} // PASS PROP
+                            showEmojis={showEmojis} // PASS PROP
+                            emoji={team1Emoji} // PASS PROP
+                        />
+                     )}
+                 </div> 
                  <div className="flex-1 h-full"> 
-                     {team2 && <TeamDisplayPanel team={team2} />}
+                     {team2 && (
+                        <TeamDisplayPanel 
+                            team={team2} 
+                            showScore={showScore} // PASS PROP
+                            showPenalties={showPenalties} // PASS PROP
+                            showEmojis={showEmojis} // PASS PROP
+                            emoji={team2Emoji} // PASS PROP
+                        />
+                     )}
                  </div>
                  {/* Logo Display (Absolute Center) */}
-                 {logoUrl && (
-                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                 {state.logoUrl && (
+                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex justify-center z-0">
                          <img 
-                             src={logoUrl}  
+                             src={state.logoUrl}  
                              alt={t('scoreboardDisplay.logoAltText') ?? "Scoreboard Logo"}  
                              className="max-h-72 max-w-full object-contain" 
+                             style={{ width: `${logoSize ?? 50}%` }} // Apply width based on state.logoSize
                          /> 
                      </div> 
                  )} 
              </div>
 
-            {/* Optional Footer */}
-            {currentFooter && (
-                <footer 
-                    className="text-center mt-auto mb-2 text-gray-400 text-xl" // Increased base size
-                    style={{
-                        color: footerTextColor || '#CCCCCC', // Default light gray if not set
-                        fontSize: `${footerTextSize || 1.25}rem` // Use state size (rem)
-                    }}
-                >
-                    {currentFooter}
-                </footer>
-            )}
+            {/* Bottom Section: Footer */}
+            <div className="w-full flex flex-col items-center pb-4">
+                {/* Optional Footer - Apply dynamic styles */}
+                {currentFooter && (
+                    <p 
+                        className="font-medium text-center text-gray-400 text-xl" // Base styles
+                        style={{
+                            color: footerTextColor || '#CCCCCC', // Default gray if not set
+                            fontSize: `${footerTextSize || 1.25}rem` // Use state size (rem), default 1.25rem (text-xl)
+                        }}
+                    >
+                        {currentFooter}
+                    </p>
+                )}
+            </div>
+
         </div>
     );
 };

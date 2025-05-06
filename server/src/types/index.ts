@@ -13,6 +13,7 @@ export interface Team {
     team1: Team;
     team2: Team;
     logoUrl: string | null;
+    logoSize?: number;
     titleText: string | null; // Added for scoreboard title
     footerText: string | null; // Added for scoreboard footer
     // Style properties for title and footer
@@ -20,14 +21,20 @@ export interface Team {
     titleTextSize: number; // e.g., font size in pixels or rem units
     footerTextColor: string;
     footerTextSize: number;
+    titleStyle?: { color: string; sizeRem: number };
+    footerStyle?: { color: string; sizeRem: number };
+    showScore?: boolean;
+    showPenalties?: boolean;
+    showEmojis: boolean;
+    team1Emoji: 'hand' | 'fist' | null;
+    team2Emoji: 'hand' | 'fist' | null;
   }
   
   // --- WebSocket Event Payloads --- 
   
   export interface UpdateTeamPayload {
     teamId: 'team1' | 'team2';
-    name?: string;
-    color?: string;
+    updates: Partial<Pick<Team, 'name' | 'color'>>;
   }
   
   export interface UpdateScorePayload {
@@ -57,6 +64,17 @@ export interface Team {
     size?: number;
   }
   
+  // Payload type for logo size update
+  export interface UpdateLogoSizePayload {
+    size: number;
+  }
+  
+  // Payload type for updating visibility
+  export interface UpdateVisibilityPayload {
+    target: 'score' | 'penalties' | 'emojis';
+    visible: boolean;
+  }
+  
   // No payload for resetAll or getState
   
   // --- Server -> Client Events --- 
@@ -76,6 +94,9 @@ export interface Team {
     updateLogo: (newLogoUrl: string | null) => void;
     updateText: (payload: UpdateTextPayload) => void; // Added for title/footer
     updateTextStyle: (payload: UpdateTextStylePayload) => void; // Added for text styling
+    updateLogoSize: (payload: UpdateLogoSizePayload) => void; // Added for logo size
+    updateVisibility: (payload: UpdateVisibilityPayload) => void; // Added for visibility
+    switchTeamEmojis: () => void;
   }
   
   // --- Inter-Server Events --- (Not used in this simple setup)

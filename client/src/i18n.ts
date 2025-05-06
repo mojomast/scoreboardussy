@@ -17,12 +17,10 @@ i18n
   .init({ // Initialize i18next
     lng: 'en', // Set default language to English
     fallbackLng: 'en', // Use English if detected language is not available
-    debug: process.env.NODE_ENV === 'development', // Enable debug output in development
+    debug: import.meta.env.MODE === 'development', // Enable debug output in development
     interpolation: {
       escapeValue: false, // React already safes from xss
     },
-    ns: ['translation', 'scoreboardControl', 'scoreboardDisplay', 'app'], // Define namespaces
-    defaultNS: 'translation', // Default namespace
     // Options for LanguageDetector
     detection: {
       order: ['querystring', 'cookie', 'localStorage', 'navigator', 'htmlTag'],
@@ -30,7 +28,7 @@ i18n
     },
     // Options for HttpApi
     backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json', // Path to separate namespace files
+      loadPath: '/locales/{{lng}}/translation.json', // Path to single translation file
     },
   });
 

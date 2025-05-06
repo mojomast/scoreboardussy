@@ -17,12 +17,20 @@ let state: ScoreboardState = {
     penalties: { major: 0, minor: 0 },
   },
   logoUrl: null,
-  titleText: null, // Initialize title
+  logoSize: 50, // Default logo size
+  titleText: '', // Changed to empty string
   footerText: null, // Initialize footer
-  titleTextColor: '#000000', // Default black
+  titleTextColor: '#FFFFFF', // Default white
   titleTextSize: 2, // Default size (e.g., in rem)
-  footerTextColor: '#000000', // Default black
+  footerTextColor: '#FFFFFF', // Default white
   footerTextSize: 1.25, // Default size (e.g., in rem)
+  titleStyle: { color: '#000000', sizeRem: 2 }, // Default title style
+  footerStyle: { color: '#000000', sizeRem: 1 }, // Default footer style
+  showScore: true,
+  showPenalties: true,
+  showEmojis: true, // Show emojis by default
+  team1Emoji: null, // No emoji initially
+  team2Emoji: null // No emoji initially
 };
 
 // TODO: Implement simple JSON file persistence later
@@ -32,7 +40,20 @@ let state: ScoreboardState = {
 
 export const getState = (): ScoreboardState => {
   // Return a deep copy to prevent accidental mutation
-  return JSON.parse(JSON.stringify(state));
+  try {
+    // Log the state right before attempting to stringify
+    console.log('State before stringify:', JSON.stringify(state, null, 2)); // Log formatted state
+    const stateCopy = JSON.parse(JSON.stringify(state));
+    console.log('State successfully stringified and parsed.');
+    return stateCopy;
+  } catch (error) {
+    console.error('!!! Error during JSON stringify/parse in getState:', error);
+    console.error('!!! State object causing error:', state); // Log the raw state object
+    // Decide how to handle the error. Re-throwing might crash, returning original state might be risky.
+    // For now, let's return the potentially mutated state to see if the error is purely serialization.
+    // Returning a default/empty state might be safer in production.
+    return state; // Returning original state on error for debugging purposes
+  }
 };
 
 export const updateState = (newState: Partial<ScoreboardState>): ScoreboardState => {
@@ -45,6 +66,9 @@ export const updateState = (newState: Partial<ScoreboardState>): ScoreboardState
   }
   if (newState.logoUrl !== undefined) { // Handle logoUrl updates
     state.logoUrl = newState.logoUrl;
+  }
+  if (newState.logoSize !== undefined) { // Handle logoSize updates
+    state.logoSize = newState.logoSize;
   }
   if (newState.titleText !== undefined) { // Handle titleText updates
     state.titleText = newState.titleText;
@@ -63,6 +87,27 @@ export const updateState = (newState: Partial<ScoreboardState>): ScoreboardState
   }
   if (newState.footerTextSize !== undefined) { // Handle footerTextSize updates
     state.footerTextSize = newState.footerTextSize;
+  }
+  if (newState.titleStyle !== undefined) { // Handle titleStyle updates
+    state.titleStyle = newState.titleStyle;
+  }
+  if (newState.footerStyle !== undefined) { // Handle footerStyle updates
+    state.footerStyle = newState.footerStyle;
+  }
+  if (newState.showScore !== undefined) { // Handle showScore updates
+    state.showScore = newState.showScore;
+  }
+  if (newState.showPenalties !== undefined) { // Handle showPenalties updates
+    state.showPenalties = newState.showPenalties;
+  }
+  if (newState.showEmojis !== undefined) { // Handle showEmojis updates
+    state.showEmojis = newState.showEmojis;
+  }
+  if (newState.team1Emoji !== undefined) { // Handle team1Emoji updates
+    state.team1Emoji = newState.team1Emoji;
+  }
+  if (newState.team2Emoji !== undefined) { // Handle team2Emoji updates
+    state.team2Emoji = newState.team2Emoji;
   }
   // saveState(); // Persist changes
   return getState(); // Return the updated state (copy)
@@ -121,12 +166,20 @@ export const resetAll = (): ScoreboardState => {
       penalties: { major: 0, minor: 0 },
     },
     logoUrl: null,
-    titleText: null, // Add title to reset state
+    logoSize: 50, // Reset logo size
+    titleText: '', // Changed to empty string
     footerText: null, // Add footer to reset state
-    titleTextColor: '#000000', // Default black
+    titleTextColor: '#FFFFFF', // Default white
     titleTextSize: 2, // Default size (e.g., in rem)
-    footerTextColor: '#000000', // Default black
+    footerTextColor: '#FFFFFF', // Default white
     footerTextSize: 1.25, // Default size (e.g., in rem)
+    titleStyle: { color: '#000000', sizeRem: 2 }, // Default title style
+    footerStyle: { color: '#000000', sizeRem: 1 }, // Default footer style
+    showScore: true,
+    showPenalties: true,
+    showEmojis: true, // Reset showEmojis
+    team1Emoji: null, // Reset team1Emoji
+    team2Emoji: null // Reset team2Emoji
   };
   // saveState();
   return getState();

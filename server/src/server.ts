@@ -24,12 +24,16 @@ import {
   Team,
   ScoreboardState,
   UpdateTextPayload,
-  UpdateTextStylePayload // Import the new payload type
+  UpdateTextStylePayload,
+  UpdateLogoSizePayload,
+  UpdateVisibilityPayload // Import the new payload type
 } from './types';
+import { ListenOptions } from 'net'; // Import ListenOptions
 
 const app = express();
 const server = http.createServer(app);
-const port = process.env.PORT || 3001;
+// Ensure port is a number
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 // Explicitly define allowed origins
 const allowedOrigins = [
@@ -67,7 +71,13 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
 const broadcastState = () => {
   const currentState = getState();
   console.log('Broadcasting state update');
-  io.emit('updateState', currentState);
+  try {
+    io.emit('updateState', currentState);
+    console.log('State broadcast successful.');
+  } catch (error) {
+    console.error('!!! Error during io.emit in broadcastState:', error);
+    console.error('!!! State object being broadcast:', currentState);
+  }
 };
 
 io.on('connection', (socket) => {
@@ -79,13 +89,14 @@ io.on('connection', (socket) => {
   // Handle events from the client
   socket.on('updateTeam', (payload: UpdateTeamPayload) => {
     console.log(`Received updateTeam from ${socket.id}:`, payload);
-    const updates: Partial<Pick<Team, 'name' | 'color'>> = {};
-    if (payload.name !== undefined) updates.name = payload.name;
-    if (payload.color !== undefined) updates.color = payload.color;
-    if (Object.keys(updates).length > 0) {
-      updateTeamInState(payload.teamId, updates);
+    // Check if payload.updates exists and has keys before proceeding
+    if (payload.updates && Object.keys(payload.updates).length > 0) {
+      // Pass the nested updates object directly to the state function
+      updateTeamInState(payload.teamId, payload.updates);
+      broadcastState(); // Broadcast the change
+    } else {
+      console.warn(`Received updateTeam from ${socket.id} without valid updates in payload.updates`);
     }
-    broadcastState();
   });
 
   socket.on('updateScore', (payload: UpdateScorePayload) => {
@@ -149,6 +160,61 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('updateLogoSize', (payload: UpdateLogoSizePayload) => {
+    console.log(`Received updateLogoSize from ${socket.id}:`, payload);
+    updateState({ logoSize: payload.size });
+    broadcastState();
+  });
+
+  socket.on('updateVisibility', (payload: UpdateVisibilityPayload) => {
+    console.log(`Received updateVisibility from ${socket.id}:`, payload);
+    const stateUpdate: Partial<ScoreboardState> = {};
+    if (payload.target === 'score') {
+      stateUpdate.showScore = payload.visible;
+    } else if (payload.target === 'penalties') {
+      stateUpdate.showPenalties = payload.visible;
+    } else if (payload.target === 'emojis') {
+      stateUpdate.showEmojis = payload.visible;
+    }
+
+    if (Object.keys(stateUpdate).length > 0) {
+      updateState(stateUpdate);
+      broadcastState();
+    } else {
+      console.warn(`Invalid target received for updateVisibility from ${socket.id}: ${payload.target}`);
+    }
+  });
+
+  // Handler for switching team emojis
+  socket.on('switchTeamEmojis', () => {
+    console.log(`Received switchTeamEmojis from ${socket.id}`);
+    const currentState = getState();
+    const currentEmoji1 = currentState.team1Emoji;
+    const currentEmoji2 = currentState.team2Emoji;
+
+    // Simple swap logic for now:
+    // If team 1 has null/fist, it gets hand, team 2 gets fist.
+    // If team 1 has hand, it gets fist, team 2 gets hand.
+    let nextEmoji1: 'hand' | 'fist' | null = null;
+    let nextEmoji2: 'hand' | 'fist' | null = null;
+
+    if (currentEmoji1 === 'hand') {
+      nextEmoji1 = 'fist';
+      nextEmoji2 = 'hand';
+    } else { // Covers null and 'fist'
+      nextEmoji1 = 'hand';
+      nextEmoji2 = 'fist';
+    }
+
+    const stateUpdate: Partial<ScoreboardState> = {
+      team1Emoji: nextEmoji1,
+      team2Emoji: nextEmoji2,
+    };
+
+    updateState(stateUpdate);
+    broadcastState();
+  });
+
   socket.on('disconnect', (reason) => {
     console.log(`Client disconnected: ${socket.id}, Reason: ${reason}`);
   });
@@ -200,13 +266,28 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // --- Start Server ---
-server.listen(port, () => {
-  console.log(`🚀 Server listening at http://localhost:${port}`);
+const isProduction = process.env.NODE_ENV === 'production';
+
+const listenOptions: ListenOptions = {
+  port: port,
+};
+
+if (isProduction) {
+  listenOptions.host = '0.0.0.0'; // Listen on all interfaces in prod
+}
+
+const startCallback = () => {
+  const address = listenOptions.host || 'localhost'; // Log appropriately
+  console.log(`🚀 Server listening at http://${address}:${port}`);
   console.log(`   WebSocket connections enabled.`);
-  if (process.env.NODE_ENV === 'production') {
+  if (isProduction) {
     console.log(`   Serving frontend from: ${clientBuildPath}`);
+    console.log(`   Accepting connections from network.`);
   } else {
     console.log(`   CORS enabled for development origins.`);
     console.log(`   Run 'npm run dev:client' in another terminal for frontend.`);
   }
-});
+};
+
+// Use the signature: listen(options: ListenOptions, listeningListener?: () => void)
+server.listen(listenOptions, startCallback);
