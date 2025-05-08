@@ -77,66 +77,105 @@ This document outlines a comprehensive plan for improving the Improvscoreboard a
 
 **Improvements:**
 
-- ✅ Implement MongoDB for data persistence
+- ✅ Implement SQLite for data persistence
 - ✅ Design schema for scoreboard state
 - ✅ Create data access layer
 
 **Implementation Steps:**
 
-1. ✅ Install MongoDB and Mongoose packages
-2. ✅ Set up database connection with proper error handling
-3. ✅ Create Mongoose schemas for scoreboard state
+1. ✅ Install SQLite and TypeORM packages
+2. ✅ Set up SQLite database connection with proper error handling
 
-### 2.2 Schema Design ✅
+### 2.2 Schema Design 
 
 **Implemented Schemas:**
 
-```javascript
-// Scoreboard Schema
-const scoreboardSchema = new mongoose.Schema({
-  name: { type: String, default: 'Default Scoreboard' },
-  teams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
-  logoUrl: { type: String, default: null, required: false },
-  logoSize: { type: Number, default: 50 },
-  titleText: { type: String, default: '' },
-  footerText: { type: String, default: null, required: false },
-  titleTextColor: { type: String, default: '#FFFFFF' },
-  titleTextSize: { type: Number, default: 2 },
-  footerTextColor: { type: String, default: '#FFFFFF' },
-  footerTextSize: { type: Number, default: 1.25 },
-  showScore: { type: Boolean, default: true },
-  showPenalties: { type: Boolean, default: true },
-  showEmojis: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
+```typescript
+// Scoreboard Entity
+@Entity('scoreboards')
+export class Scoreboard {
+  @PrimaryGeneratedColumn('uuid')
+  _id: string;
 
-// Team Schema
-const teamSchema = new mongoose.Schema({
-  id: { type: String, required: true },
-  name: { type: String, required: true },
-  color: { type: String, required: true },
-  score: { type: Number, default: 0 },
+  @Column({ default: 'Default Scoreboard' })
+  name: string;
+
+  @OneToMany(() => Team, team => team.scoreboard, { cascade: true })
+  teams: Team[];
+
+  @Column({ nullable: true, type: 'varchar' })
+  logoUrl: string | null;
+
+  @Column({ default: 50 })
+  logoSize: number;
+
+  @Column({ default: '' })
+  titleText: string;
+
+  @Column({ nullable: true, type: 'varchar' })
+  footerText: string | null;
+
+  @Column({ default: '#FFFFFF' })
+  titleTextColor: string;
+
+  @Column({ default: 2 })
+  titleTextSize: number;
+
+  @Column({ default: '#FFFFFF' })
+  footerTextColor: string;
+
+  @Column({ default: 1.25 })
+  footerTextSize: number;
+
+  @Column({ default: true })
+  showScore: boolean;
+
+  @Column({ default: true })
+  showPenalties: boolean;
+
+  @Column({ default: true })
+  showEmojis: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+
+// Team Entity
+@Entity('teams')
+export class Team {
+  @PrimaryGeneratedColumn('uuid')
+  _id: string;
+
+  @Column()
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  color: string;
+
+  @Column({ default: 0 })
+  score: number;
+
+  @Column('simple-json')
   penalties: {
-    major: { type: Number, default: 0 },
-    minor: { type: Number, default: 0 }
-  },
-  emoji: { type: String, enum: ['hand', 'fist', null], default: null },
-  scoreboard: { type: mongoose.Schema.Types.ObjectId, ref: 'Scoreboard' }
-});
+    major: number;
+    minor: number;
+  };
 
-// User Schema (for authentication)
-const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, // Store hashed password
-  role: { type: String, enum: ['admin', 'user'], default: 'user' },
-  createdAt: { type: Date, default: Date.now }
-});
-```
+  @Column({ nullable: true, type: 'varchar' })
+  emoji: 'hand' | 'fist' | null;
 
-### 2.3 Data Migration ✅
+  @ManyToOne(() => Scoreboard, scoreboard => scoreboard.teams)
+  scoreboard: Scoreboard;
 
-**Implementation Steps:**
+  @Column({ nullable: true })
+  scoreboardId: string;
+}
 
 1. ✅ Create data migration scripts
 2. ✅ Implement functions to convert between in-memory state and database models
@@ -316,7 +355,7 @@ module.exports = {
 
 1. ✅ Create Dockerfiles for server and client
 2. ✅ Set up Docker Compose for development
-3. ✅ Configure Docker for MongoDB in production
+3. ✅ Configure Docker for SQLite in production
 4. ✅ Update deployment scripts for Docker
 5. ✅ Update monitoring for Docker containers
 
@@ -324,7 +363,7 @@ module.exports = {
 
 **Implementation Steps:**
 
-1. ✅ Set up automated MongoDB backups
+1. ✅ Set up automated SQLite backups
 2. ✅ Configure backup rotation
 3. ✅ Test backup restoration process
 

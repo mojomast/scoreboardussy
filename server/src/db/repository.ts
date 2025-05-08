@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { Scoreboard, Team, ScoreboardDocument, TeamDocument } from './models';
+import { AppDataSource } from './connection';
+import { Scoreboard, Team } from './entities';
 import { ScoreboardState, Team as TeamType } from '../types';
 
 /**
@@ -38,19 +38,19 @@ export const getDefaultState = (): ScoreboardState => {
 };
 
 /**
- * Convert a database scoreboard document to the application state format
+ * Convert a database scoreboard entity to the application state format
  */
-export const scoreboardDocToState = async (doc: ScoreboardDocument): Promise<ScoreboardState> => {
+export const scoreboardEntityToState = async (scoreboard: Scoreboard): Promise<ScoreboardState> => {
   try {
-    // Populate teams
-    await (doc as any).populate('teams');
+    // Get the teams repository
+    const teamRepository = AppDataSource.getRepository(Team);
     
-    // Get teams from the populated document
-    const teams = doc.teams as unknown as TeamDocument[];
+    // Find teams for this scoreboard
+    const teams = await teamRepository.find({ where: { scoreboardId: scoreboard._id } });
     
     // Find team1 and team2 by their id field
-    const team1Doc = teams.find(team => team.id === 'team1');
-    const team2Doc = teams.find(team => team.id === 'team2');
+    const team1Entity = teams.find(team => team.id === 'team1');
+    const team2Entity = teams.find(team => team.id === 'team2');
     
     // Default team objects
     const defaultTeam1: TeamType = {
@@ -71,44 +71,44 @@ export const scoreboardDocToState = async (doc: ScoreboardDocument): Promise<Sco
     
     // Convert to state format
     const state: ScoreboardState = {
-      team1: team1Doc ? {
+      team1: team1Entity ? {
         id: 'team1',
-        name: team1Doc.name,
-        color: team1Doc.color,
-        score: team1Doc.score,
+        name: team1Entity.name,
+        color: team1Entity.color,
+        score: team1Entity.score,
         penalties: {
-          major: team1Doc.penalties.major,
-          minor: team1Doc.penalties.minor
+          major: team1Entity.penalties.major,
+          minor: team1Entity.penalties.minor
         }
       } : defaultTeam1,
-      team2: team2Doc ? {
+      team2: team2Entity ? {
         id: 'team2',
-        name: team2Doc.name,
-        color: team2Doc.color,
-        score: team2Doc.score,
+        name: team2Entity.name,
+        color: team2Entity.color,
+        score: team2Entity.score,
         penalties: {
-          major: team2Doc.penalties.major,
-          minor: team2Doc.penalties.minor
+          major: team2Entity.penalties.major,
+          minor: team2Entity.penalties.minor
         }
       } : defaultTeam2,
-      logoUrl: doc.logoUrl,
-      logoSize: doc.logoSize,
-      titleText: doc.titleText,
-      footerText: doc.footerText,
-      titleTextColor: doc.titleTextColor,
-      titleTextSize: doc.titleTextSize,
-      footerTextColor: doc.footerTextColor,
-      footerTextSize: doc.footerTextSize,
-      showScore: doc.showScore,
-      showPenalties: doc.showPenalties,
-      showEmojis: doc.showEmojis,
-      team1Emoji: team1Doc?.emoji || null,
-      team2Emoji: team2Doc?.emoji || null
+      logoUrl: scoreboard.logoUrl,
+      logoSize: scoreboard.logoSize,
+      titleText: scoreboard.titleText,
+      footerText: scoreboard.footerText,
+      titleTextColor: scoreboard.titleTextColor,
+      titleTextSize: scoreboard.titleTextSize,
+      footerTextColor: scoreboard.footerTextColor,
+      footerTextSize: scoreboard.footerTextSize,
+      showScore: scoreboard.showScore,
+      showPenalties: scoreboard.showPenalties,
+      showEmojis: scoreboard.showEmojis,
+      team1Emoji: team1Entity?.emoji || null,
+      team2Emoji: team2Entity?.emoji || null
     };
     
     return state;
   } catch (error) {
-    console.error('Error converting scoreboard document to state:', error);
+    console.error('Error converting scoreboard entity to state:', error);
     return getDefaultState();
   }
 };
@@ -119,17 +119,22 @@ export const scoreboardDocToState = async (doc: ScoreboardDocument): Promise<Sco
  */
 export const getScoreboard = async (): Promise<ScoreboardState> => {
   try {
+    // Get the scoreboard repository
+    const scoreboardRepository = AppDataSource.getRepository(Scoreboard);
+    
     // Find the most recently updated scoreboard
-    const scoreboard = await Scoreboard.findOne().sort({ updatedAt: -1 });
+    const scoreboard = await scoreboardRepository.findOne({
+      order: { updatedAt: 'DESC' }
+    });
     
     // If no scoreboard exists, create a default one
     if (!scoreboard) {
       const newScoreboard = await createDefaultScoreboard();
-      return await scoreboardDocToState(newScoreboard);
+      return await scoreboardEntityToState(newScoreboard);
     }
     
     // Convert to state format
-    return await scoreboardDocToState(scoreboard as ScoreboardDocument);
+    return await scoreboardEntityToState(scoreboard);
   } catch (error) {
     console.error('Error getting scoreboard from database:', error);
     // Return default state on error
@@ -140,52 +145,56 @@ export const getScoreboard = async (): Promise<ScoreboardState> => {
 /**
  * Create a default scoreboard in the database
  */
-export const createDefaultScoreboard = async (): Promise<ScoreboardDocument> => {
+export const createDefaultScoreboard = async (): Promise<Scoreboard> => {
   try {
-    // Create team1
-    const team1 = await Team.create({
-      id: 'team1',
-      name: 'Blue Team',
-      color: '#3b82f6',
-      score: 0,
-      penalties: { major: 0, minor: 0 },
-      emoji: null
-    });
-    
-    // Create team2
-    const team2 = await Team.create({
-      id: 'team2',
-      name: 'Red Team',
-      color: '#ef4444',
-      score: 0,
-      penalties: { major: 0, minor: 0 },
-      emoji: null
-    });
+    // Get repositories
+    const scoreboardRepository = AppDataSource.getRepository(Scoreboard);
+    const teamRepository = AppDataSource.getRepository(Team);
     
     // Create scoreboard
-    const scoreboard = await Scoreboard.create({
-      name: 'Default Scoreboard',
-      teams: [team1._id, team2._id],
-      logoUrl: null,
-      logoSize: 50,
-      titleText: '',
-      footerText: null,
-      titleTextColor: '#FFFFFF',
-      titleTextSize: 2,
-      footerTextColor: '#FFFFFF',
-      footerTextSize: 1.25,
-      showScore: true,
-      showPenalties: true,
-      showEmojis: true
-    });
+    const scoreboard = new Scoreboard();
+    scoreboard.name = 'Default Scoreboard';
+    scoreboard.logoUrl = null;
+    scoreboard.logoSize = 50;
+    scoreboard.titleText = '';
+    scoreboard.footerText = null;
+    scoreboard.titleTextColor = '#FFFFFF';
+    scoreboard.titleTextSize = 2;
+    scoreboard.footerTextColor = '#FFFFFF';
+    scoreboard.footerTextSize = 1.25;
+    scoreboard.showScore = true;
+    scoreboard.showPenalties = true;
+    scoreboard.showEmojis = true;
     
-    // Update teams with reference to scoreboard
-    await Team.updateMany(
-      { _id: { $in: [team1._id, team2._id] } },
-      { scoreboard: scoreboard._id }
-    );
+    // Save scoreboard to get an ID
+    const savedScoreboard = await scoreboardRepository.save(scoreboard);
     
-    return scoreboard as ScoreboardDocument;
+    // Create team1
+    const team1 = new Team();
+    team1.id = 'team1';
+    team1.name = 'Blue Team';
+    team1.color = '#3b82f6';
+    team1.score = 0;
+    team1.penalties = { major: 0, minor: 0 };
+    team1.emoji = null;
+    team1.scoreboardId = savedScoreboard._id;
+    team1.scoreboard = savedScoreboard;
+    
+    // Create team2
+    const team2 = new Team();
+    team2.id = 'team2';
+    team2.name = 'Red Team';
+    team2.color = '#ef4444';
+    team2.score = 0;
+    team2.penalties = { major: 0, minor: 0 };
+    team2.emoji = null;
+    team2.scoreboardId = savedScoreboard._id;
+    team2.scoreboard = savedScoreboard;
+    
+    // Save teams
+    await teamRepository.save([team1, team2]);
+    
+    return savedScoreboard;
   } catch (error) {
     console.error('Error creating default scoreboard:', error);
     throw error;
@@ -197,8 +206,13 @@ export const createDefaultScoreboard = async (): Promise<ScoreboardDocument> => 
  */
 export const updateScoreboard = async (state: ScoreboardState): Promise<ScoreboardState> => {
   try {
+    // Get the scoreboard repository
+    const scoreboardRepository = AppDataSource.getRepository(Scoreboard);
+    
     // Find the most recently updated scoreboard
-    const scoreboard = await Scoreboard.findOne().sort({ updatedAt: -1 });
+    const scoreboard = await scoreboardRepository.findOne({
+      order: { updatedAt: 'DESC' }
+    });
     
     // If no scoreboard exists, create a default one
     if (!scoreboard) {
@@ -211,18 +225,18 @@ export const updateScoreboard = async (state: ScoreboardState): Promise<Scoreboa
       await updateTeam('team1', state.team1);
       await updateTeam('team2', state.team2);
       
-      return await scoreboardDocToState(newScoreboard);
+      return await scoreboardEntityToState(newScoreboard);
     }
     
     // Update existing scoreboard
-    await updateScoreboardFields(scoreboard as ScoreboardDocument, state);
+    await updateScoreboardFields(scoreboard, state);
     
     // Update teams
     await updateTeam('team1', state.team1);
     await updateTeam('team2', state.team2);
     
     // Return updated state
-    return await scoreboardDocToState(scoreboard as ScoreboardDocument);
+    return await scoreboardEntityToState(scoreboard);
   } catch (error) {
     console.error('Error updating scoreboard in database:', error);
     // Return the original state on error
@@ -233,7 +247,10 @@ export const updateScoreboard = async (state: ScoreboardState): Promise<Scoreboa
 /**
  * Helper function to update scoreboard fields
  */
-const updateScoreboardFields = async (scoreboard: ScoreboardDocument, state: ScoreboardState): Promise<void> => {
+const updateScoreboardFields = async (scoreboard: Scoreboard, state: ScoreboardState): Promise<void> => {
+  // Get the scoreboard repository
+  const scoreboardRepository = AppDataSource.getRepository(Scoreboard);
+  
   scoreboard.logoUrl = state.logoUrl;
   scoreboard.logoSize = state.logoSize || 50;
   scoreboard.titleText = state.titleText || '';
@@ -246,7 +263,7 @@ const updateScoreboardFields = async (scoreboard: ScoreboardDocument, state: Sco
   scoreboard.showPenalties = state.showPenalties !== undefined ? state.showPenalties : true;
   scoreboard.showEmojis = state.showEmojis;
   
-  await scoreboard.save();
+  await scoreboardRepository.save(scoreboard);
 };
 
 /**
@@ -254,8 +271,11 @@ const updateScoreboardFields = async (scoreboard: ScoreboardDocument, state: Sco
  */
 export const updateTeam = async (teamId: string, teamData: TeamType): Promise<void> => {
   try {
+    // Get the team repository
+    const teamRepository = AppDataSource.getRepository(Team);
+    
     // Find team by id
-    const team = await Team.findOne({ id: teamId });
+    const team = await teamRepository.findOne({ where: { id: teamId } });
     
     if (team) {
       // Update team fields
@@ -271,7 +291,7 @@ export const updateTeam = async (teamId: string, teamData: TeamType): Promise<vo
       }
       
       // Save team
-      await team.save();
+      await teamRepository.save(team);
     }
   } catch (error) {
     console.error(`Error updating team ${teamId} in database:`, error);

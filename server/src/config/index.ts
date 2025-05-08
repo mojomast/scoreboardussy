@@ -41,9 +41,7 @@ const config = {
     allowedOrigins: corsAllowedOrigins,
   },
   db: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/improvscoreboard',
-    user: process.env.MONGODB_USER || '',
-    password: process.env.MONGODB_PASSWORD || '',
+    sqliteDbPath: process.env.SQLITE_DB_PATH || path.resolve(__dirname, '../../../data/improvscoreboard.sqlite'),
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'dev_jwt_secret',

@@ -11,7 +11,7 @@ This document explains how to use Docker for both development and production env
 
 The project includes a `docker-compose.yml` file that sets up a complete development environment with:
 
-- MongoDB database
+- SQLite database
 - Node.js server (with hot-reloading)
 - React client (with Vite dev server)
 
@@ -32,7 +32,7 @@ docker compose down
 
 - Client: http://localhost:5173
 - Server API: http://localhost:3001/api/state
-- MongoDB: mongodb://admin:password@localhost:27017
+- SQLite database file: ./data/improvscoreboard.sqlite
 
 ### Development Workflow
 
@@ -45,7 +45,7 @@ The Docker setup mounts your local directories into the containers, so any chang
 
 For production deployment, refer to the deployment scripts in the `server/deployment` directory. The production setup uses:
 
-- Docker for MongoDB
+- SQLite for data persistence
 - Docker for the application server
 - Nginx as a reverse proxy
 
@@ -98,35 +98,32 @@ docker exec -it <container_name> sh
 ### Database Operations
 
 ```bash
-# Connect to MongoDB shell
-docker exec -it mongodb mongosh -u admin -p password
+# Create a SQLite database backup
+docker exec improvscoreboard-server sh -c "sqlite3 /app/data/improvscoreboard.sqlite '.backup /tmp/db.backup'"
+docker cp improvscoreboard-server:/tmp/db.backup ./db.backup
 
-# Create a database backup
-docker exec mongodb mongodump --archive=/tmp/db.dump --db=improvscoreboard
-docker cp mongodb:/tmp/db.dump ./db.dump
-
-# Restore a database backup
-docker cp ./db.dump mongodb:/tmp/db.dump
-docker exec mongodb mongorestore --archive=/tmp/db.dump
+# Restore a SQLite database backup
+docker cp ./db.backup improvscoreboard-server:/tmp/db.backup
+docker exec improvscoreboard-server sh -c "sqlite3 /app/data/improvscoreboard.sqlite '.restore /tmp/db.backup'"
 ```
 
 ## Troubleshooting
 
 ### Connection Issues
 
-If the server can't connect to MongoDB, check:
+If the server can't connect to the SQLite database, check:
 
-1. MongoDB container is running: `docker ps | grep mongodb`
-2. MongoDB connection string is correct in the server's `.env` file
-3. MongoDB logs for errors: `docker logs mongodb`
+1. The data directory exists and has correct permissions
+2. The SQLite database path is correct in the server's `.env` file
+3. Server logs for database connection errors: `docker logs improvscoreboard-server`
 
 ### Volume Permissions
 
 If you encounter permission issues with mounted volumes:
 
 ```bash
-# Fix permissions for MongoDB data directory
-sudo chown -R 999:999 /var/data/mongodb
+# Fix permissions for SQLite data directory
+sudo chown -R 1000:1000 /path/to/data
 ```
 
 ### Network Issues

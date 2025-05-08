@@ -1,20 +1,6 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:6.0
-    container_name: mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - app-network
-
   server:
     build:
       context: ./server
@@ -23,17 +9,17 @@ services:
     restart: always
     ports:
       - "3001:3001"
-    depends_on:
-      - mongodb
+
     environment:
       - NODE_ENV=development
       - PORT=3001
-      - MONGODB_URI=mongodb://admin:password@mongodb:27017/improvscoreboard?authSource=admin
+      - SQLITE_DB_PATH=/app/data/improvscoreboard.sqlite
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123
     volumes:
       - ./server:/app
       - /app/node_modules
+      - sqlite_data:/app/data
     networks:
       - app-network
     command: npm run dev
@@ -46,8 +32,6 @@ services:
     restart: always
     ports:
       - "5173:5173"
-    depends_on:
-      - server
     environment:
       - NODE_ENV=development
     volumes:
@@ -62,5 +46,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  sqlite_data:
     driver: local

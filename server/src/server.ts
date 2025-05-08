@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import helmet from 'helmet';
-import mongoose from 'mongoose';
+import { AppDataSource } from './db/connection';
 import morgan from 'morgan';
 import config from './config';
 import { authRoutes, authenticate, authorize, setupInitialAdmin } from './auth';
@@ -357,8 +357,8 @@ const startCallback = async () => {
   }
   
   // Log database status
-  if (mongoose.connection.readyState === 1) {
-    logger.info(`   Connected to MongoDB at ${config.db.uri}`);
+  if (AppDataSource.isInitialized) {
+    logger.info(`   Connected to SQLite database at ${config.db.sqliteDbPath}`);
     
     // Setup initial admin user
     try {

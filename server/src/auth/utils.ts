@@ -1,7 +1,8 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import config from '../config';
-import { User } from '../db/models';
+import { User } from '../db/entities';
+import { AppDataSource } from '../db/connection';
 
 // Types
 export interface TokenPayload {
@@ -73,8 +74,11 @@ export const verifyToken = (token: string, isRefreshToken = false): TokenPayload
  */
 export const createUser = async (username: string, password: string, role = 'user'): Promise<any> => {
   try {
+    // Get the user repository
+    const userRepository = AppDataSource.getRepository(User);
+    
     // Check if user already exists
-    const existingUser = await User.findOne({ username });
+    const existingUser = await userRepository.findOne({ where: { username } });
     if (existingUser) {
       throw new Error('Username already exists');
     }
@@ -83,16 +87,18 @@ export const createUser = async (username: string, password: string, role = 'use
     const hashedPassword = await hashPassword(password);
 
     // Create user
-    const user = await User.create({
-      username,
-      password: hashedPassword,
-      role,
-    });
+    const user = new User();
+    user.username = username;
+    user.password = hashedPassword;
+    user.role = role as 'admin' | 'user';
+    
+    // Save user
+    const savedUser = await userRepository.save(user);
 
     return {
-      id: user._id,
-      username: user.username,
-      role: user.role,
+      id: savedUser._id,
+      username: savedUser.username,
+      role: savedUser.role,
     };
   } catch (error) {
     throw error;
@@ -104,8 +110,11 @@ export const createUser = async (username: string, password: string, role = 'use
  */
 export const findUserByCredentials = async (username: string, password: string): Promise<any> => {
   try {
+    // Get the user repository
+    const userRepository = AppDataSource.getRepository(User);
+    
     // Find user
-    const user = await User.findOne({ username });
+    const user = await userRepository.findOne({ where: { username } });
     if (!user) {
       throw new Error('Invalid credentials');
     }
