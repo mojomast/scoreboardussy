@@ -11,6 +11,7 @@ APP_NAME="improvscoreboard"
 DEPLOY_USER="deploy"
 DEPLOY_HOST="your-server-ip"
 DEPLOY_PATH="/var/www/$APP_NAME"
+DOCKER_PATH="/var/docker/$APP_NAME"
 REPO_URL="https://github.com/yourusername/improvscoreboard.git"
 BRANCH="main"
 
@@ -87,10 +88,15 @@ ssh $DEPLOY_USER@$DEPLOY_HOST "sudo cp $DEPLOY_PATH/deployment/nginx.conf /etc/n
 ssh $DEPLOY_USER@$DEPLOY_HOST "sudo ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/"
 ssh $DEPLOY_USER@$DEPLOY_HOST "sudo nginx -t && sudo systemctl reload nginx"
 
-# Setup PM2
-print_step "Setting up PM2..."
-ssh $DEPLOY_USER@$DEPLOY_HOST "cd $DEPLOY_PATH && pm2 start deployment/ecosystem.config.js --env production"
-ssh $DEPLOY_USER@$DEPLOY_HOST "pm2 save"
+# Setup Docker
+print_step "Setting up Docker containers..."
+ssh $DEPLOY_USER@$DEPLOY_HOST "sudo docker compose -f $DOCKER_PATH/docker-compose.yml down || true"
+ssh $DEPLOY_USER@$DEPLOY_HOST "sudo docker compose -f $DOCKER_PATH/docker-compose.yml up -d"
+
+# Check container status
+print_step "Checking container status..."
+ssh $DEPLOY_USER@$DEPLOY_HOST "sudo docker ps | grep $APP_NAME"
 
 print_success "Deployment completed successfully!"
 print_success "Your application is now running at https://your-domain.com"
+print_success "MongoDB is running in Docker and accessible at mongodb://admin:password@localhost:27017"

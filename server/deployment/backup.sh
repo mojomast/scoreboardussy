@@ -10,6 +10,11 @@ set -e
 DB_NAME="improvscoreboard"
 BACKUP_DIR="/var/backups/mongodb/$DB_NAME"
 BACKUP_COUNT=7  # Number of backups to keep
+MONGO_USER="admin"
+MONGO_PASSWORD="password"
+MONGO_HOST="localhost"
+MONGO_PORT="27017"
+MONGO_AUTH_DB="admin"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -41,7 +46,15 @@ BACKUP_FILE="$BACKUP_DIR/$DB_NAME-$TIMESTAMP.gz"
 
 # Create backup
 print_step "Creating MongoDB backup for $DB_NAME..."
-mongodump --db $DB_NAME --gzip --archive=$BACKUP_FILE
+docker exec mongodb mongodump \
+  --host $MONGO_HOST \
+  --port $MONGO_PORT \
+  --username $MONGO_USER \
+  --password $MONGO_PASSWORD \
+  --authenticationDatabase $MONGO_AUTH_DB \
+  --db $DB_NAME \
+  --gzip \
+  --archive > $BACKUP_FILE
 
 # Check if backup was successful
 if [ $? -eq 0 ]; then
@@ -65,17 +78,38 @@ if [ "$1" == "--test-restore" ]; then
   TEST_DB="${DB_NAME}_test_restore"
   
   # Drop test database if it exists
-  mongo --eval "db.dropDatabase()" $TEST_DB
+  docker exec mongodb mongo \
+    --host $MONGO_HOST \
+    --port $MONGO_PORT \
+    --username $MONGO_USER \
+    --password $MONGO_PASSWORD \
+    --authenticationDatabase $MONGO_AUTH_DB \
+    $TEST_DB --eval "db.dropDatabase()"
   
   # Restore to test database
-  mongorestore --gzip --archive=$BACKUP_FILE --nsFrom="$DB_NAME.*" --nsTo="$TEST_DB.*"
+  docker exec -i mongodb mongorestore \
+    --host $MONGO_HOST \
+    --port $MONGO_PORT \
+    --username $MONGO_USER \
+    --password $MONGO_PASSWORD \
+    --authenticationDatabase $MONGO_AUTH_DB \
+    --gzip \
+    --archive \
+    --nsFrom="$DB_NAME.*" \
+    --nsTo="$TEST_DB.*" < $BACKUP_FILE
   
   # Check if restore was successful
   if [ $? -eq 0 ]; then
     print_success "Test restoration successful!"
     
     # Drop test database
-    mongo --eval "db.dropDatabase()" $TEST_DB
+    docker exec mongodb mongo \
+      --host $MONGO_HOST \
+      --port $MONGO_PORT \
+      --username $MONGO_USER \
+      --password $MONGO_PASSWORD \
+      --authenticationDatabase $MONGO_AUTH_DB \
+      $TEST_DB --eval "db.dropDatabase()"
   else
     print_error "Test restoration failed!"
   fi

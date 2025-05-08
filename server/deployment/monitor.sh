@@ -115,17 +115,17 @@ check_api_working() {
   fi
 }
 
-# Check MongoDB status
+# Check MongoDB Docker container status
 check_mongodb_status() {
-  print_step "Checking MongoDB status..."
+  print_step "Checking MongoDB Docker container status..."
   
-  # Check if MongoDB is running
-  if systemctl is-active --quiet mongod; then
-    print_success "MongoDB is running"
+  # Check if MongoDB container is running
+  if docker ps | grep -q "mongodb"; then
+    print_success "MongoDB container is running"
     return 0
   else
-    print_error "MongoDB is not running"
-    send_notification "MongoDB is not running" "error"
+    print_error "MongoDB container is not running"
+    send_notification "MongoDB container is not running" "error"
     return 1
   fi
 }
@@ -143,6 +143,36 @@ check_disk_space() {
   else
     print_error "Disk space is critical ($disk_usage%)"
     send_notification "Disk space is critical ($disk_usage%)" "error"
+    return 1
+  fi
+}
+
+# Check Docker status
+check_docker_status() {
+  print_step "Checking Docker status..."
+  
+  # Check if Docker is running
+  if systemctl is-active --quiet docker; then
+    print_success "Docker is running"
+    return 0
+  else
+    print_error "Docker is not running"
+    send_notification "Docker is not running" "error"
+    return 1
+  fi
+}
+
+# Check MongoDB data volume
+check_mongodb_volume() {
+  print_step "Checking MongoDB data volume..."
+  
+  # Check if MongoDB data volume exists and has data
+  if [ -d "/var/data/mongodb" ] && [ "$(ls -A /var/data/mongodb)" ]; then
+    print_success "MongoDB data volume is OK"
+    return 0
+  else
+    print_error "MongoDB data volume is empty or missing"
+    send_notification "MongoDB data volume is empty or missing" "error"
     return 1
   fi
 }
@@ -188,7 +218,9 @@ run_checks() {
   check_app_running || ((errors++))
   check_app_responding || ((errors++))
   check_api_working || ((errors++))
+  check_docker_status || ((errors++))
   check_mongodb_status || ((errors++))
+  check_mongodb_volume || ((errors++))
   check_disk_space || ((errors++))
   check_memory_usage || ((errors++))
   check_cpu_load || ((errors++))

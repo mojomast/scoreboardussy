@@ -47,14 +47,52 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 npm install -g pm2
 
-# Install MongoDB
-print_step "Installing MongoDB..."
-wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+# Install Docker
+print_step "Installing Docker..."
+apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt update
-apt install -y mongodb-org
-systemctl enable mongod
-systemctl start mongod
+apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Install Docker Compose
+print_step "Installing Docker Compose..."
+mkdir -p ~/.docker/cli-plugins/
+curl -SL https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+chmod +x ~/.docker/cli-plugins/docker-compose
+
+# Setup MongoDB with Docker
+print_step "Setting up MongoDB with Docker..."
+mkdir -p /var/data/mongodb
+mkdir -p /var/docker/mongodb
+
+# Create Docker Compose file for MongoDB
+cat > /var/docker/mongodb/docker-compose.yml << EOF
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - /var/data/mongodb:/data/db
+    networks:
+      - mongo-network
+
+networks:
+  mongo-network:
+    driver: bridge
+EOF
+
+# Start MongoDB container
+cd /var/docker/mongodb
+docker compose up -d
 
 # Install Nginx
 print_step "Installing Nginx..."
@@ -71,7 +109,7 @@ print_step "Configuring firewall..."
 apt install -y ufw
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
-ufw allow 27017/tcp  # MongoDB (consider restricting this in production)
+ufw allow 27017/tcp  # MongoDB (only needed if accessing from other servers)
 ufw --force enable
 
 # Create application user
@@ -102,6 +140,40 @@ cat > /etc/cron.daily/mongodb-backup << EOF
 EOF
 chmod +x /etc/cron.daily/mongodb-backup
 
+# Create Docker Compose file for the application
+print_step "Creating Docker Compose file for the application..."
+mkdir -p /var/docker/improvscoreboard
+cat > /var/docker/improvscoreboard/docker-compose.yml << EOF
+version: '3.8'
+
+services:
+  app:
+    image: node:18
+    container_name: improvscoreboard
+    restart: always
+    working_dir: /app
+    volumes:
+      - /var/www/improvscoreboard/server:/app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/improvscoreboard?authSource=admin
+    networks:
+      - app-network
+      - mongo-network
+    command: "npm start"
+    depends_on:
+      - mongodb
+
+networks:
+  app-network:
+    driver: bridge
+  mongo-network:
+    external: true
+EOF
+
 # Setup log rotation
 print_step "Setting up log rotation..."
 cat > /etc/logrotate.d/improvscoreboard << EOF
@@ -127,3 +199,6 @@ echo "1. Add your domain to Nginx configuration"
 echo "2. Obtain SSL certificate with: certbot --nginx -d your-domain.com"
 echo "3. Deploy your application using the deploy.sh script"
 echo "4. Set up environment variables in /var/www/improvscoreboard/server/.env"
+echo "5. Start the application with: cd /var/docker/improvscoreboard && docker compose up -d"
+echo "6. MongoDB is running in Docker with username 'admin' and password 'password'"
+echo "   Change these credentials in production!"
