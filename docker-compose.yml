@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+<<<<<<< HEAD
+=======
+  mongodb:
+    image: mongo:4.4.18
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
   server:
     build:
       context: ./server
@@ -16,6 +33,7 @@ services:
       - SQLITE_DB_PATH=/app/data/improvscoreboard.sqlite
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123
+      - CORS_ORIGIN=http://107.173.85.175:5173
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -34,17 +52,23 @@ services:
       - "5173:5173"
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://107.173.85.175:3001
     volumes:
       - ./client:/app
       - /app/node_modules
     networks:
       - app-network
-    command: npm run dev
+    command: npm run dev -- --host 0.0.0.0
 
 networks:
   app-network:
     driver: bridge
 
 volumes:
+<<<<<<< HEAD
   sqlite_data:
     driver: local
+=======
+  mongodb_data:
+    driver: local
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d

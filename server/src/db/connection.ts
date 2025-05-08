@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 import { DataSource } from 'typeorm';
 import path from 'path';
 import config from '../config';
+=======
+import mongoose from 'mongoose';
+import { config } from '../config';
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
 import logger from '../logging';
 import { Team, Scoreboard, User } from './entities';
 

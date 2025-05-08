@@ -1,9 +1,10 @@
-import express, { Request, Response } from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
+import express from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import helmet from 'helmet';
+<<<<<<< HEAD
 import { AppDataSource } from './db/connection';
 import morgan from 'morgan';
 import config from './config';
@@ -35,85 +36,42 @@ import {
   UpdateVisibilityPayload // Import the new payload type
 } from './types';
 import { ListenOptions } from 'net'; // Import ListenOptions
+=======
+import mongoose from 'mongoose';
+import logger from './logging';
+import { config } from './config';
+import { setupAuth } from './auth';
+import { setupDatabase, loadStateFromDB, saveStateToDB } from './db';
+import { GameState, Matchup } from './types';
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
 
 const app = express();
-const server = http.createServer(app);
-// Get port from config
-const port = config.server.port;
-
-// Get allowed origins from config
-const allowedOrigins = config.cors.allowedOrigins;
-
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-      console.error(msg);
-      return callback(new Error(msg), false);
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+    cors: {
+        origin: config.cors.allowedOrigins,
+        methods: ['GET', 'POST']
     }
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true, // If you need to handle cookies or authorization headers
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Enable pre-flight requests for all routes
-app.use(express.json()); // Middleware to parse JSON bodies
-
-// Add HTTP request logging
-app.use(morgan('combined', { stream }));
-
-// Add security headers with helmet
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
-      },
-    },
-    xssFilter: true,
-    noSniff: true,
-    referrerPolicy: { policy: 'same-origin' },
-  })
-);
-
-// Add HSTS header in production
-if (config.server.isProduction) {
-  app.use(
-    helmet.hsts({
-      maxAge: 31536000, // 1 year in seconds
-      includeSubDomains: true,
-      preload: true,
-    })
-  );
-}
-
-// --- Socket.IO Setup ---
-const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
-  server, {
-  cors: corsOptions // Use the same CORS options for Socket.IO
 });
 
-const broadcastState = () => {
-  const currentState = getState();
-  logger.info('Broadcasting state update');
-  try {
-    io.emit('updateState', currentState);
-    logger.info('State broadcast successful.');
-  } catch (error) {
-    logger.error('Error during io.emit in broadcastState:', error);
-    logger.error('State object being broadcast:', currentState);
-  }
-};
+// Initialize game state
+let currentMatchup: Matchup | null = null;
+let scores: Record<string, number> = {};
+let contestants: string[] = [];
+let matchHistory: Matchup[] = [];
 
+// Middleware
+app.use(cors({
+    origin: config.cors.origin,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
+app.use(helmet());
+app.use(express.json());
+
+// Socket.IO event handlers
 io.on('connection', (socket) => {
+<<<<<<< HEAD
   logger.info(`Client connected: ${socket.id}`);
 
   // Send the current state to the newly connected client
@@ -359,17 +317,86 @@ const startCallback = async () => {
   // Log database status
   if (AppDataSource.isInitialized) {
     logger.info(`   Connected to SQLite database at ${config.db.sqliteDbPath}`);
+=======
+    logger.info('Client connected');
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
     
-    // Setup initial admin user
+    // Send current state to new client
+    socket.emit('state_update', {
+        currentMatchup,
+        scores,
+        contestants,
+        matchHistory
+    });
+
+    // Handle client events
+    socket.on('update_matchup', (data: Matchup) => {
+        currentMatchup = data;
+        io.emit('matchup_updated', currentMatchup);
+        saveStateToDB();
+    });
+
+    socket.on('update_score', (data: Record<string, number>) => {
+        scores = { ...scores, ...data };
+        io.emit('scores_updated', scores);
+        saveStateToDB();
+    });
+
+    socket.on('update_contestants', (data: string[]) => {
+        contestants = data;
+        io.emit('contestants_updated', contestants);
+        saveStateToDB();
+    });
+
+    socket.on('add_to_history', (data: Matchup) => {
+        matchHistory.push(data);
+        io.emit('history_updated', matchHistory);
+        saveStateToDB();
+    });
+
+    socket.on('disconnect', () => {
+        logger.info('Client disconnected');
+    });
+});
+
+// Start server
+const start = async () => {
     try {
-      await setupInitialAdmin();
+        await setupDatabase();
+        await setupAuth(app);
+        
+        const state = await loadStateFromDB();
+        if (state) {
+            currentMatchup = state.currentMatchup;
+            scores = state.scores;
+            contestants = state.contestants;
+            matchHistory = state.matchHistory;
+        }
+
+        // The 'host' for httpServer.listen is implicitly 0.0.0.0
+        // when no host argument is provided and the underlying express app is configured to listen on all interfaces
+        // by default.
+        httpServer.listen(Number(config.port), () => {
+            logger.info(`🚀 Server listening at http://${config.host}:${config.port}`);
+            logger.info('   WebSocket connections enabled.');
+            logger.info('   CORS enabled for development origins.');
+        });
     } catch (error) {
-      logger.error('Error setting up initial admin user:', error);
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     }
-  } else {
-    logger.info(`   Running with in-memory state (no database connection)`);
-  }
 };
 
-// Use the signature: listen(options: ListenOptions, listeningListener?: () => void)
-server.listen(listenOptions, startCallback);
+start();
+
+// Handle process termination
+process.on('SIGTERM', () => {
+    logger.info('SIGTERM received. Shutting down gracefully...');
+    httpServer.close(() => {
+        logger.info('Server closed');
+        mongoose.connection.close(false, () => {
+            logger.info('MongoDB connection closed');
+            process.exit(0);
+        });
+    });
+});

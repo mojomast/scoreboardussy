@@ -1,42 +1,20 @@
+<<<<<<< HEAD
 import { AppDataSource } from './connection';
 import { Scoreboard, Team } from './entities';
 import { ScoreboardState, Team as TeamType } from '../types';
+=======
+import mongoose from 'mongoose';
+import { ScoreboardState, Team } from '../types';
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
 
-/**
- * Get default state for fallback
- */
-export const getDefaultState = (): ScoreboardState => {
-  return {
-    team1: {
-      id: 'team1',
-      name: 'Blue Team',
-      color: '#3b82f6',
-      score: 0,
-      penalties: { major: 0, minor: 0 }
-    },
-    team2: {
-      id: 'team2',
-      name: 'Red Team',
-      color: '#ef4444',
-      score: 0,
-      penalties: { major: 0, minor: 0 }
-    },
-    logoUrl: null,
-    logoSize: 50,
-    titleText: '',
-    footerText: null,
-    titleTextColor: '#FFFFFF',
-    titleTextSize: 2,
-    footerTextColor: '#FFFFFF',
-    footerTextSize: 1.25,
-    showScore: true,
-    showPenalties: true,
-    showEmojis: true,
-    team1Emoji: null,
-    team2Emoji: null
-  };
-};
+// Define MongoDB schemas
+const teamSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    name: { type: String, required: true },
+    score: { type: Number, required: true }
+});
 
+<<<<<<< HEAD
 /**
  * Convert a database scoreboard entity to the application state format
  */
@@ -296,4 +274,62 @@ export const updateTeam = async (teamId: string, teamData: TeamType): Promise<vo
   } catch (error) {
     console.error(`Error updating team ${teamId} in database:`, error);
   }
+=======
+const matchupSchema = new mongoose.Schema({
+    id: { type: String, required: true },
+    players: [{ type: String, required: true }],
+    scores: { type: Map, of: Number },
+    timestamp: { type: Number, required: true }
+});
+
+const scoreboardStateSchema = new mongoose.Schema({
+    teams: [teamSchema],
+    currentMatchup: { type: matchupSchema, required: false },
+    matchHistory: [matchupSchema]
+});
+
+// Create models
+const TeamModel = mongoose.model('Team', teamSchema);
+const ScoreboardStateModel = mongoose.model('ScoreboardState', scoreboardStateSchema);
+
+const convertToScoreboardState = (doc: any): ScoreboardState => {
+    return {
+        teams: doc.teams.map((team: any) => ({
+            id: team.id,
+            name: team.name,
+            score: team.score
+        })),
+        currentMatchup: doc.currentMatchup ? {
+            id: doc.currentMatchup.id,
+            players: doc.currentMatchup.players,
+            scores: Object.fromEntries(doc.currentMatchup.scores),
+            timestamp: doc.currentMatchup.timestamp
+        } : null,
+        matchHistory: doc.matchHistory.map((matchup: any) => ({
+            id: matchup.id,
+            players: matchup.players,
+            scores: Object.fromEntries(matchup.scores),
+            timestamp: matchup.timestamp
+        }))
+    };
+};
+
+export const saveState = async (state: ScoreboardState): Promise<void> => {
+    try {
+        await ScoreboardStateModel.findOneAndUpdate({}, state, { upsert: true });
+    } catch (error) {
+        console.error('Failed to save state:', error);
+        throw error;
+    }
+};
+
+export const loadState = async (): Promise<ScoreboardState | null> => {
+    try {
+        const doc = await ScoreboardStateModel.findOne().lean();
+        return doc ? convertToScoreboardState(doc) : null;
+    } catch (error) {
+        console.error('Failed to load state:', error);
+        throw error;
+    }
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
 };

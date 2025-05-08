@@ -1,8 +1,13 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+<<<<<<< HEAD
 import config from '../config';
 import { User } from '../db/entities';
 import { AppDataSource } from '../db/connection';
+=======
+import { config } from '../config';
+import { User } from '../db/models';
+>>>>>>> 032adbf04f7d7a01ab10513234f76b30671dbe4d
 
 // Types
 export interface TokenPayload {
