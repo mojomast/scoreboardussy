@@ -3,6 +3,12 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
+import morgan from 'morgan';
+import config from './config';
+import { authRoutes, authenticate, authorize, setupInitialAdmin } from './auth';
+import logger, { stream } from './logging';
 import {
   getState,
   updateTeam as updateTeamInState,
@@ -32,16 +38,11 @@ import { ListenOptions } from 'net'; // Import ListenOptions
 
 const app = express();
 const server = http.createServer(app);
-// Ensure port is a number
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+// Get port from config
+const port = config.server.port;
 
-// Explicitly define allowed origins
-const allowedOrigins = [
-  'http://localhost:5173', // Vite dev server
-  'http://127.0.0.1:5173',
-  // Add production frontend URL here later
-  // e.g., 'https://your-scoreboard-app.com'
-];
+// Get allowed origins from config
+const allowedOrigins = config.cors.allowedOrigins;
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
@@ -62,6 +63,38 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Enable pre-flight requests for all routes
 app.use(express.json()); // Middleware to parse JSON bodies
 
+// Add HTTP request logging
+app.use(morgan('combined', { stream }));
+
+// Add security headers with helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
+      },
+    },
+    xssFilter: true,
+    noSniff: true,
+    referrerPolicy: { policy: 'same-origin' },
+  })
+);
+
+// Add HSTS header in production
+if (config.server.isProduction) {
+  app.use(
+    helmet.hsts({
+      maxAge: 31536000, // 1 year in seconds
+      includeSubDomains: true,
+      preload: true,
+    })
+  );
+}
+
 // --- Socket.IO Setup ---
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
   server, {
@@ -70,62 +103,62 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
 
 const broadcastState = () => {
   const currentState = getState();
-  console.log('Broadcasting state update');
+  logger.info('Broadcasting state update');
   try {
     io.emit('updateState', currentState);
-    console.log('State broadcast successful.');
+    logger.info('State broadcast successful.');
   } catch (error) {
-    console.error('!!! Error during io.emit in broadcastState:', error);
-    console.error('!!! State object being broadcast:', currentState);
+    logger.error('Error during io.emit in broadcastState:', error);
+    logger.error('State object being broadcast:', currentState);
   }
 };
 
 io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
+  logger.info(`Client connected: ${socket.id}`);
 
   // Send the current state to the newly connected client
   socket.emit('updateState', getState());
 
   // Handle events from the client
   socket.on('updateTeam', (payload: UpdateTeamPayload) => {
-    console.log(`Received updateTeam from ${socket.id}:`, payload);
+    logger.info(`Received updateTeam from ${socket.id}:`, payload);
     // Check if payload.updates exists and has keys before proceeding
     if (payload.updates && Object.keys(payload.updates).length > 0) {
       // Pass the nested updates object directly to the state function
       updateTeamInState(payload.teamId, payload.updates);
       broadcastState(); // Broadcast the change
     } else {
-      console.warn(`Received updateTeam from ${socket.id} without valid updates in payload.updates`);
+      logger.warn(`Received updateTeam from ${socket.id} without valid updates in payload.updates`);
     }
   });
 
   socket.on('updateScore', (payload: UpdateScorePayload) => {
-    console.log(`Received updateScore from ${socket.id}:`, payload);
+    logger.info(`Received updateScore from ${socket.id}:`, payload);
     const actionString = payload.action > 0 ? 'increment' : 'decrement';
     updateScoreInState(payload.teamId, actionString);
     broadcastState();
   });
 
   socket.on('updatePenalty', (payload: UpdatePenaltyPayload) => {
-    console.log(`Received updatePenalty from ${socket.id}:`, payload);
+    logger.info(`Received updatePenalty from ${socket.id}:`, payload);
     updatePenaltyInState(payload.teamId, payload.type);
     broadcastState();
   });
 
   socket.on('resetPenalties', (payload: ResetPenaltiesPayload) => {
-    console.log(`Received resetPenalties from ${socket.id}:`, payload);
+    logger.info(`Received resetPenalties from ${socket.id}:`, payload);
     resetPenaltiesInState(payload.teamId);
     broadcastState();
   });
 
   socket.on('resetAll', () => {
-    console.log(`Received resetAll from ${socket.id}`);
+    logger.info(`Received resetAll from ${socket.id}`);
     resetAllInState();
     broadcastState();
   });
 
   socket.on('updateLogo', (newLogoUrl: string | null) => {
-    console.log(`Received updateLogo from ${socket.id}. URL Length: ${newLogoUrl ? newLogoUrl.length : 'null'}`);
+    logger.info(`Received updateLogo from ${socket.id}. URL Length: ${newLogoUrl ? newLogoUrl.length : 'null'}`);
     updateState({ logoUrl: newLogoUrl });
     broadcastState();
   });
@@ -133,17 +166,17 @@ io.on('connection', (socket) => {
   socket.on('updateText', (payload: UpdateTextPayload) => {
     const { field, text } = payload;
     if (field === 'titleText' || field === 'footerText') {
-      console.log(`Received updateText from ${socket.id}. Field: ${field}, Text: ${text}`);
+      logger.info(`Received updateText from ${socket.id}. Field: ${field}, Text: ${text}`);
       updateState({ [field]: text ? text.trim() : null });
       broadcastState();
     } else {
-      console.warn(`Invalid field "${field}" received for updateText from ${socket.id}`);
+      logger.warn(`Invalid field "${field}" received for updateText from ${socket.id}`);
     }
   });
 
   // Handler for updating text styles (color, size)
   socket.on('updateTextStyle', (payload: UpdateTextStylePayload) => {
-    console.log(`Received updateTextStyle from ${socket.id}:`, payload);
+    logger.info(`Received updateTextStyle from ${socket.id}:`, payload);
     const updates: Partial<ScoreboardState> = {};
     if (payload.target === 'title') {
       if (payload.color !== undefined) updates.titleTextColor = payload.color;
@@ -161,13 +194,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('updateLogoSize', (payload: UpdateLogoSizePayload) => {
-    console.log(`Received updateLogoSize from ${socket.id}:`, payload);
+    logger.info(`Received updateLogoSize from ${socket.id}:`, payload);
     updateState({ logoSize: payload.size });
     broadcastState();
   });
 
   socket.on('updateVisibility', (payload: UpdateVisibilityPayload) => {
-    console.log(`Received updateVisibility from ${socket.id}:`, payload);
+    logger.info(`Received updateVisibility from ${socket.id}:`, payload);
     const stateUpdate: Partial<ScoreboardState> = {};
     if (payload.target === 'score') {
       stateUpdate.showScore = payload.visible;
@@ -181,13 +214,13 @@ io.on('connection', (socket) => {
       updateState(stateUpdate);
       broadcastState();
     } else {
-      console.warn(`Invalid target received for updateVisibility from ${socket.id}: ${payload.target}`);
+      logger.warn(`Invalid target received for updateVisibility from ${socket.id}: ${payload.target}`);
     }
   });
 
   // Handler for switching team emojis
   socket.on('switchTeamEmojis', () => {
-    console.log(`Received switchTeamEmojis from ${socket.id}`);
+    logger.info(`Received switchTeamEmojis from ${socket.id}`);
     const currentState = getState();
     const currentEmoji1 = currentState.team1Emoji;
     const currentEmoji2 = currentState.team2Emoji;
@@ -216,12 +249,47 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log(`Client disconnected: ${socket.id}, Reason: ${reason}`);
+    logger.info(`Client disconnected: ${socket.id}, Reason: ${reason}`);
   });
 });
 
-// --- REST API Endpoints (Optional Fallback/Alternative) ---
+// --- REST API Endpoints ---
+// Authentication routes
+app.use('/api/auth', authRoutes);
+
+// Public state endpoint (read-only)
 app.get('/api/state', (req: Request, res: Response) => {
+  res.json(getState());
+});
+
+// Protected control panel routes
+app.post('/api/control/score/:teamId/:action', authenticate, (req: Request, res: Response) => {
+  const { teamId, action } = req.params;
+  if ((teamId === 'team1' || teamId === 'team2') && (action === 'increment' || action === 'decrement')) {
+    updateScoreInState(teamId as 'team1' | 'team2', action as 'increment' | 'decrement');
+    broadcastState(); // Also broadcast changes made via REST
+    res.json(getState());
+  } else {
+    res.status(400).json({ message: 'Invalid team ID or action' });
+  }
+});
+
+app.post('/api/control/team/:teamId', authenticate, (req: Request, res: Response) => {
+  const { teamId } = req.params;
+  const updates = req.body;
+  
+  if (teamId === 'team1' || teamId === 'team2') {
+    updateTeamInState(teamId as 'team1' | 'team2', updates);
+    broadcastState();
+    res.json(getState());
+  } else {
+    res.status(400).json({ message: 'Invalid team ID' });
+  }
+});
+
+app.post('/api/control/reset', authenticate, (req: Request, res: Response) => {
+  resetAllInState();
+  broadcastState();
   res.json(getState());
 });
 
@@ -238,11 +306,11 @@ app.post('/api/score/:teamId/:action', (req: Request, res: Response) => {
 });
 
 // --- Serve Frontend Statically (for Production) ---
-// Resolve the path to the client's build directory relative to the server directory
-const clientBuildPath = path.resolve(__dirname, '../../client/dist');
+// Get client build path from config
+const clientBuildPath = config.paths.clientBuildPath;
 
-if (process.env.NODE_ENV === 'production') {
-  console.log(`Serving static files from: ${clientBuildPath}`);
+if (config.server.isProduction) {
+  logger.info(`Serving static files from: ${clientBuildPath}`);
   // Serve static files from the React app build directory
   app.use(express.static(clientBuildPath));
 
@@ -250,10 +318,10 @@ if (process.env.NODE_ENV === 'production') {
   // match one above, send back React's index.html file.
   app.get('*', (req, res) => {
     const indexPath = path.resolve(clientBuildPath, 'index.html');
-    console.log(`Attempting to serve index.html from: ${indexPath}`);
+    logger.info(`Attempting to serve index.html from: ${indexPath}`);
     res.sendFile(indexPath, (err) => {
       if (err) {
-        console.error("Error sending index.html:", err);
+        logger.error("Error sending index.html:", err);
         // If file not found, maybe log and send a generic 404?
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
           res.status(404).send('Resource not found');
@@ -266,7 +334,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // --- Start Server ---
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = config.server.isProduction;
 
 const listenOptions: ListenOptions = {
   port: port,
@@ -276,16 +344,30 @@ if (isProduction) {
   listenOptions.host = '0.0.0.0'; // Listen on all interfaces in prod
 }
 
-const startCallback = () => {
+const startCallback = async () => {
   const address = listenOptions.host || 'localhost'; // Log appropriately
-  console.log(`🚀 Server listening at http://${address}:${port}`);
-  console.log(`   WebSocket connections enabled.`);
+  logger.info(`🚀 Server listening at http://${address}:${port}`);
+  logger.info(`   WebSocket connections enabled.`);
   if (isProduction) {
-    console.log(`   Serving frontend from: ${clientBuildPath}`);
-    console.log(`   Accepting connections from network.`);
+    logger.info(`   Serving frontend from: ${clientBuildPath}`);
+    logger.info(`   Accepting connections from network.`);
   } else {
-    console.log(`   CORS enabled for development origins.`);
-    console.log(`   Run 'npm run dev:client' in another terminal for frontend.`);
+    logger.info(`   CORS enabled for development origins.`);
+    logger.info(`   Run 'npm run dev:client' in another terminal for frontend.`);
+  }
+  
+  // Log database status
+  if (mongoose.connection.readyState === 1) {
+    logger.info(`   Connected to MongoDB at ${config.db.uri}`);
+    
+    // Setup initial admin user
+    try {
+      await setupInitialAdmin();
+    } catch (error) {
+      logger.error('Error setting up initial admin user:', error);
+    }
+  } else {
+    logger.info(`   Running with in-memory state (no database connection)`);
   }
 };
 
