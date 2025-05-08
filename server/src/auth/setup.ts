@@ -1,5 +1,5 @@
 import { createUser } from './utils';
-import config from '../config';
+import { config } from '../config';
 
 /**
  * Create an initial admin user if none exists

@@ -1,6 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import config from '../config';
+import { config } from '../config';
 import { User } from '../db/models';
 
 // Types
