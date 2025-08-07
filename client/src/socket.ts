@@ -4,7 +4,7 @@ import { ServerToClientEvents, ClientToServerEvents } from '@server-types/index'
 // Determine the server URL based on the environment
 // In development, Vite proxies '/socket.io', but we connect directly to the server's port.
 // In production, the server serves the client, so we connect to the same origin.
-const URL = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3001';
+const URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3001';
 
 console.log(`Socket connecting to: ${URL}`);
 
@@ -26,5 +26,5 @@ socket.on('disconnect', (reason) => {
 });
 
 socket.on('connect_error', (err) => {
-  console.error('Socket connection error:', err.message, err.cause);
+console.error('Socket connection error:', err.message);
 });

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Team } from '@server-types/index';
 import { useScoreboard } from '@/contexts/ScoreboardContext';
+import RoundControls from './RoundControls';
 
 interface TeamControlPanelProps {
     team: Team;
@@ -68,6 +69,7 @@ const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team, teamId }) => 
 
     return (
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 w-full mb-6">
+            <RoundControls />
             {/* Team Title */}
              <h3 className="text-lg font-semibold mb-4 border-b pb-2 dark:text-white dark:border-gray-600">
                 {t('teamControl.title')} - {team.name || teamId}
