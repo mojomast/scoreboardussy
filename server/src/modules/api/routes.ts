@@ -1,0 +1,152 @@
+import express, { Router, Request, Response } from 'express';
+import {
+    getState,
+    updateScore,
+    createStateBackup,
+    restoreStateFromBackup,
+    listStateBackups,
+    persistState
+} from '../state';
+
+// Create and configure the router
+const router: Router = express.Router();
+
+// GET /api/state - Get current scoreboard state
+router.get('/state', (req: Request, res: Response) => {
+    res.json(getState());
+});
+
+// POST /api/score/:teamId/:action - Update team score
+router.post('/score/:teamId/:action', (req: Request, res: Response) => {
+    const { teamId, action } = req.params;
+    
+    // Validate parameters
+    if ((teamId === 'team1' || teamId === 'team2') && 
+        (action === 'increment' || action === 'decrement')) {
+        updateScore(teamId, action);
+        res.json(getState());
+    } else {
+        res.status(400).json({ 
+            error: 'Invalid parameters',
+            message: 'TeamId must be team1 or team2, action must be increment or decrement'
+        });
+    }
+});
+
+// GET /api/backup/list - List all available backups
+router.get('/backup/list', async (req: Request, res: Response) => {
+    try {
+        const backups = await listStateBackups();
+        res.json({
+            success: true,
+            backups: backups.map(backup => ({
+                path: backup.path,
+                date: backup.date,
+                size: backup.size,
+                filename: backup.path.split('/').pop() || backup.path.split('\\').pop()
+            }))
+        });
+    } catch (error) {
+        console.error('Error listing backups:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to list backups',
+            message: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+
+// POST /api/backup/create - Create a new backup
+router.post('/backup/create', async (req: Request, res: Response) => {
+    try {
+        const { name } = req.body;
+        const backupPath = await createStateBackup(name);
+        
+        if (backupPath) {
+            res.json({
+                success: true,
+                message: 'Backup created successfully',
+                path: backupPath,
+                filename: backupPath.split('/').pop() || backupPath.split('\\').pop()
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to create backup'
+            });
+        }
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to create backup',
+            message: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+
+// POST /api/backup/restore - Restore from a backup
+router.post('/backup/restore', async (req: Request, res: Response) => {
+    try {
+        const { path } = req.body;
+        
+        if (!path) {
+            return res.status(400).json({
+                success: false,
+                error: 'Backup path is required'
+            });
+        }
+        
+        const success = await restoreStateFromBackup(path);
+        
+        if (success) {
+            res.json({
+                success: true,
+                message: 'State restored successfully',
+                state: getState()
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to restore from backup'
+            });
+        }
+    } catch (error) {
+        console.error('Error restoring from backup:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to restore from backup',
+            message: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+
+// POST /api/state/save - Force save current state
+router.post('/state/save', async (req: Request, res: Response) => {
+    try {
+        const success = await persistState();
+        
+        if (success) {
+            res.json({
+                success: true,
+                message: 'State saved successfully'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to save state'
+            });
+        }
+    } catch (error) {
+        console.error('Error saving state:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to save state',
+            message: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+
+// Export the configured router
+export default router;
+

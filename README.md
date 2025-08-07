@@ -122,37 +122,54 @@ For advanced users, you **can** expose the app to the internet using:
 
 ```
 scoreboardussy/
-├── client/                   # React frontend (Vite)
-│   ├── public/               # Static assets (favicons, logos, etc.)
-│   ├── src/                  # Source files (TypeScript + React)
-│   │   ├── components/       # Reusable React components
-│   │   ├── contexts/         # Global state contexts
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── lib/              # Utility functions
-│   │   ├── styles/           # Tailwind and global styles
-│   │   ├── App.tsx           # Main app component with routes
-│   │   ├── main.tsx          # Entry point for React app
-│   │   └── i18n.ts           # Internationalization setup
-│   ├── tailwind.config.js    # Tailwind CSS config
-│   ├── vite.config.ts        # Vite configuration
-│   └── tsconfig.json         # TypeScript configuration for client
-├── server/                   # Node.js backend (Express + Socket.IO)
+├── client/                         # React frontend (Vite + TS)
+│   ├── public/                     # Static assets
 │   ├── src/
-│   │   ├── server.ts         # Express app and Socket.IO logic
-│   │   ├── state.ts          # In-memory scoreboard state
-│   │   └── types.ts          # Shared type definitions
-│   └── tsconfig.json         # TypeScript config for backend
-├── scripts/                  # Convenience shell and batch scripts
-│   ├── install_deps.sh/bat   # Install all dependencies
-│   ├── launch.sh/bat         # Start dev servers
-│   ├── build.sh/bat          # Build production files
-│   └── start_prod.sh/bat     # Run production server
-├── package.json              # Root workspace and script runner
-├── package-lock.json         # Dependency lock file
-└── README.md                 # Project documentation
+│   │   ├── components/             # UI split by domain
+│   │   │   ├── rounds/
+│   │   │   ├── teams/
+│   │   │   ├── scoreboard/
+│   │   │   └── ui/
+│   │   ├── contexts/               # Global state (with tests in __tests__/)
+│   │   ├── utils/                   # Client utilities (e.g., socket manager)
+│   │   ├── App.tsx                  # Routes and layout
+│   │   └── main.tsx                 # React entrypoint
+│   ├── jest.config.cjs              # Jest config (JS)
+│   ├── vite.config.ts               # Vite config
+│   └── tsconfig.json                # Client TS config
+├── server/                         # Node backend (Express + Socket.IO + TS)
+│   ├── data/                        # Persisted scoreboard data (JSON)
+│   │   └── scoreboard.json
+│   ├── src/
+│   │   ├── modules/                 # Modularized server logic
+│   │   │   ├── api/                 # Express routes
+│   │   │   ├── export/              # Reports/exports
+│   │   │   └── state/               # App state (rounds/, team.ts, ui.ts)
+│   │   │       └── rounds/
+│   │   ├── types/                   # Typed events and payloads
+│   │   └── server.ts                # App entry (wires modules)
+│   └── tsconfig.json                # Server TS config
+├── test_all.ps1                     # Convenience test runner (Windows)
+├── test_api.ps1                     # API tests (Windows)
+├── test_websocket.ps1               # WebSocket tests (Windows)
+├── install_deps.sh / .bat           # Install dependencies
+├── launch.sh / .bat                 # Start dev servers
+├── build.sh / .bat                  # Build production files
+├── start_prod.sh / .bat             # Run production server
+├── package.json                     # Root scripts/workspace
+├── package-lock.json                # Dependency lock
+└── README.md                        # Project documentation
 ```
 
 </details>
+
+### 🧰 What Changed (Modularization)
+
+- Client components split by domain: components/rounds, components/teams, components/scoreboard, components/ui
+- Added client tests and setup: client/src/contexts/__tests__/, client/src/components/**/__tests__/, client/jest.config.cjs, client/src/setupTests.ts
+- Server reorganized into modules: server/src/modules/{api,export,state} with server/src/types for events/payloads
+- Basic persistence added via server/data/scoreboard.json
+- New helper scripts for testing: test_all.ps1, test_api.ps1, test_websocket.ps1
 
 ---
 

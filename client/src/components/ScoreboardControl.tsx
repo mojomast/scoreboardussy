@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useScoreboard } from '../contexts/ScoreboardContext';
 import TeamControlPanel from './TeamControlPanel';
 import ScoreboardPreview from './ScoreboardPreview';
+import RoundControl from './rounds/RoundControl';
 import { 
     Container, 
     Tabs, 
@@ -20,7 +21,7 @@ import {
     SegmentedControl,
     Box
 } from '@mantine/core';
-import { UpdateTeamPayload, UpdateTextStylePayload, UpdateLogoSizePayload, UpdateVisibilityPayload } from '../../../server/src/types';
+// Removed unused server type imports
 
 /**
  * Component for controlling the scoreboard settings.
@@ -30,14 +31,16 @@ const ScoreboardControl: React.FC = () => {
     const { t, i18n } = useTranslation('translation');
     const {
         state,
-        isConnected,
+        connectionState,
         resetAll,
         updateLogo,
         updateText,
         updateTextStyle,
         updateLogoSize,
         updateVisibility,
-        switchTeamEmojis // Get the new function
+        updateRoundSetting,
+        switchTeamEmojis, // Get the new function
+        exportMatch // Add exportMatch function
     } = useScoreboard();
     const { team1, team2 } = state || {};
 
@@ -126,6 +129,8 @@ const ScoreboardControl: React.FC = () => {
         i18n.changeLanguage(value);
     };
 
+    const isConnected = connectionState === 'connected';
+
     if (!state) {
         // Display a loading or disconnected message
         return (
@@ -160,6 +165,7 @@ const ScoreboardControl: React.FC = () => {
             <Tabs defaultValue="teams">
                 <Tabs.List grow>
                     <Tabs.Tab value="teams" disabled={!team1 || !team2}>{t('scoreboardControl.tabTeams')}</Tabs.Tab>
+                    <Tabs.Tab value="rounds">{t('scoreboardControl.tabRounds', 'Rounds')}</Tabs.Tab>
                     <Tabs.Tab value="settings">{t('scoreboardControl.tabSettings')}</Tabs.Tab>
                 </Tabs.List>
 
@@ -181,6 +187,11 @@ const ScoreboardControl: React.FC = () => {
                             />
                         )}
                     </Group>
+                </Tabs.Panel>
+
+                {/* --- Rounds Tab --- */}
+                <Tabs.Panel value="rounds" pt="xs">
+                    <RoundControl />
                 </Tabs.Panel>
 
                 {/* --- Settings Tab --- */}
@@ -308,6 +319,77 @@ const ScoreboardControl: React.FC = () => {
                                 onChange={(event) => updateVisibility({ target: 'penalties', visible: event.currentTarget.checked })}
                                 disabled={!isConnected}
                             />
+                        </Paper>
+
+                        {/* Round Display Settings */}
+                        <Paper shadow="xs" p="md">
+                            <Title order={4} mb="sm">{t('scoreboardControl.roundDisplayTitle', 'Round Display')}</Title>
+                            <Checkbox
+                                label={t('scoreboardControl.showRoundNumberLabel', 'Show Round Number')}
+                                checked={state?.rounds?.settings?.showRoundNumber ?? true}
+                                onChange={(event) => updateRoundSetting('showRoundNumber', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showThemeLabel', 'Show Theme')}
+                                checked={state?.rounds?.settings?.showTheme ?? true}
+                                onChange={(event) => updateRoundSetting('showTheme', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showTypeLabel', 'Show Round Type')}
+                                checked={state?.rounds?.settings?.showType ?? true}
+                                onChange={(event) => updateRoundSetting('showType', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showMixedStatusLabel', 'Show Mixed/Compared Status')}
+                                checked={state?.rounds?.settings?.showMixedStatus ?? true}
+                                onChange={(event) => updateRoundSetting('showMixedStatus', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showPlayerLimitsLabel', 'Show Player Limits')}
+                                checked={state?.rounds?.settings?.showPlayerLimits ?? true}
+                                onChange={(event) => updateRoundSetting('showPlayerLimits', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showTimeLimitLabel', 'Show Time Limit')}
+                                checked={state?.rounds?.settings?.showTimeLimit ?? true}
+                                onChange={(event) => updateRoundSetting('showTimeLimit', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                                mb="xs"
+                            />
+                            <Checkbox
+                                label={t('scoreboardControl.showRoundHistoryLabel', 'Show Round History')}
+                                checked={state?.rounds?.settings?.showRoundHistory ?? true}
+                                onChange={(event) => updateRoundSetting('showRoundHistory', event.currentTarget.checked)}
+                                disabled={!isConnected}
+                            />
+                        </Paper>
+
+                        {/* Export Match */}
+                        <Paper shadow="xs" p="md">
+                            <Title order={4} mb="sm">{t('scoreboardControl.exportTitle', 'Match Results')}</Title>
+                            <Stack>
+                                <Text size="sm" c="dimmed">
+                                    {t('scoreboardControl.exportDescription', 'Export current match results and statistics to an HTML file.')}
+                                </Text>
+                                <Button 
+                                    onClick={exportMatch}
+                                    disabled={!isConnected || !state?.rounds?.history?.length}
+                                    leftSection={"📊"}
+                                    fullWidth
+                                >
+                                    {t('scoreboardControl.exportButton', 'Export Match Results')}
+                                </Button>
+                            </Stack>
                         </Paper>
 
                         {/* Emoji Settings */}

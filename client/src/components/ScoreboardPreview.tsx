@@ -13,7 +13,7 @@ const ScoreboardPreview: React.FC<ScoreboardPreviewProps> = ({ state }) => {
         return <div className="p-2 text-center text-sm text-gray-500 dark:text-gray-400">{t('scoreboardControl.loadingState', 'Loading Preview...')}</div>; // Add a translation key if needed
     }
 
-    const { team1, team2, logoUrl, logoSize, titleText, footerText, titleStyle, footerStyle } = state;
+const { team1, team2, logoUrl, titleText, footerText, titleStyle, footerStyle } = state;
 
     // Helper to render penalties (smaller)
     const renderPenalties = (penalties: { major: number; minor: number }) => {
