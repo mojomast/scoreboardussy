@@ -16,6 +16,29 @@ router.get('/state', (req: Request, res: Response) => {
     res.json(getState());
 });
 
+// GET /api/scoring-mode - Get current scoring mode
+router.get('/scoring-mode', (req: Request, res: Response) => {
+    const s = getState();
+    res.json({ mode: s.scoringMode || 'round' });
+});
+
+// POST /api/scoring-mode - Set scoring mode
+router.post('/scoring-mode', (req: Request, res: Response) => {
+    try {
+        const { mode } = req.body || {};
+        if (mode !== 'round' && mode !== 'manual') {
+            return res.status(400).json({ error: 'Invalid mode. Use "round" or "manual".' });
+        }
+        // Lazy import to avoid circulars in some bundlers
+        const { updateState } = require('../state');
+        updateState({ scoringMode: mode });
+        res.json(getState());
+    } catch (error) {
+        console.error('Error setting scoring mode:', error);
+        res.status(500).json({ error: 'Failed to set scoring mode' });
+    }
+});
+
 // POST /api/score/:teamId/:action - Update team score
 router.post('/score/:teamId/:action', (req: Request, res: Response) => {
     const { teamId, action } = req.params;

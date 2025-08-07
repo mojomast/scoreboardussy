@@ -81,6 +81,20 @@ export const initializeSocketHandlers = (io: IoServer) => {
             broadcastState(io);
         });
 
+        // Handle scoring mode changes
+        socket.on('setScoringMode', (payload) => {
+            console.log(`Received setScoringMode from ${socket.id}:`, payload.mode);
+            try {
+                const mode = payload.mode === 'manual' ? 'manual' : 'round';
+                // updateState is imported via ../state through re-exports
+                require('../state').updateState({ scoringMode: mode });
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error setting scoring mode:', error);
+                socket.emit('updateState', getState());
+            }
+        });
+
         // Handle penalty updates
         socket.on('updatePenalty', (payload) => {
             console.log(`Received updatePenalty from ${socket.id}:`, payload);

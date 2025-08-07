@@ -26,12 +26,20 @@ export const updateTeam = (teamId: 'team1' | 'team2', updates: Partial<Pick<Team
     updateState({ [teamId]: updatedTeam });
 };
 
-export const updateScore = (teamId: 'team1' | 'team2', action: 'increment' | 'decrement'): void => {
+export const updateScore = (teamId: 'team1' | 'team2', action: 'increment' | 'decrement'): void =
+    {
     const currentState = getState();
+
+    // Only allow manual increments when in manual mode
+    const mode = currentState.scoringMode || 'round';
+    if (mode !== 'manual') {
+        console.warn(`Ignoring manual score update in '${mode}' mode`);
+        return;
+    }
+
     const currentScore = currentState[teamId].score;
-    
-    const newScore = action === 'increment' 
-        ? currentScore + 1 
+    const newScore = action === 'increment'
+        ? currentScore + 1
         : Math.max(0, currentScore - 1); // Prevent negative scores
     
     updateState({

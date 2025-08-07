@@ -40,7 +40,8 @@ const ScoreboardControl: React.FC = () => {
         updateVisibility,
         updateRoundSetting,
         switchTeamEmojis, // Get the new function
-        exportMatch // Add exportMatch function
+        exportMatch, // Add exportMatch function
+        setScoringMode,
     } = useScoreboard();
     const { team1, team2 } = state || {};
     
@@ -320,6 +321,24 @@ const ScoreboardControl: React.FC = () => {
                                 checked={state?.showPenalties ?? true}
                                 onChange={(event) => updateVisibility({ target: 'penalties', visible: event.currentTarget.checked })}
                                 disabled={!isConnected}
+                            />
+                        </Paper>
+
+                        {/* Scoring Mode Toggle */}
+                        <Paper shadow="xs" p="md">
+                            <Title order={4} mb="sm">{t('scoreboardControl.scoringModeTitle', 'Scoring Mode')}</Title>
+                            <SegmentedControl
+                                data={[
+                                    { label: t('scoreboardControl.modeRound', 'Round Mode'), value: 'round' },
+                                    { label: t('scoreboardControl.modeManual', 'Manual Mode'), value: 'manual' },
+                                ]}
+                                value={(state?.scoringMode as 'round' | 'manual') || 'round'}
+                                onChange={(value) = 3e {
+                                    if (value === 'round' || value === 'manual') {
+                                        setScoringMode(value);
+                                    }
+                                }}
+                                fullWidth
                             />
                         </Paper>
 

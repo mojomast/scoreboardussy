@@ -33,6 +33,7 @@ export interface ClientToServerEvents {
     getState: () => void;
     updateTeam: (payload: UpdateTeamPayload) => void;
     updateScore: (payload: UpdateScorePayload) => void;
+    setScoringMode: (payload: { mode: 'round' | 'manual' }) => void;
     updatePenalty: (payload: UpdatePenaltyPayload) => void;
     resetPenalties: (payload: ResetPenaltiesPayload) => void;
     resetAll: () => void;

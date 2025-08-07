@@ -42,6 +42,7 @@ interface ScoreboardContextType {
     switchTeamEmojis: () => void;
     startRound: (config: RoundConfig) => void;
     endRound: (results: EndRoundPayload) => void;
+    setScoringMode: (mode: 'round' | 'manual') => void;
     // Template management methods
     saveTemplate: (template: SaveTemplatePayload) => void;
     updateTemplate: (id: string, updates: Partial<RoundTemplate>) => void;
@@ -297,6 +298,10 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         socketManager.emit('updateVisibility', payload);
     }, []);
 
+    const setScoringMode = useCallback((mode: 'round' | 'manual') => {
+        socketManager.emit('setScoringMode', { mode });
+    }, []);
+
     const updateRoundSetting = useCallback((target: keyof ScoreboardState['rounds']['settings'], visible: boolean) => {
         // Optimistically update local state for instant UI feedback
         setState((prev) => {
@@ -506,6 +511,7 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         switchTeamEmojis,
         startRound,
         endRound,
+        setScoringMode,
         // Template management
         saveTemplate,
         updateTemplate,
@@ -540,6 +546,7 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         switchTeamEmojis,
         startRound,
         endRound,
+        setScoringMode,
         saveTemplate,
         updateTemplate,
         deleteTemplate,

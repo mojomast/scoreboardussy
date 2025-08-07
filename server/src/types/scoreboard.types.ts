@@ -2,6 +2,8 @@ import { Team } from './team.types';
 import { RoundState } from './rounds.types';
 import { TextStyle } from './ui.types';
 
+export type ScoringMode = 'round' | 'manual';
+
 /**
  * Core scoreboard state interface 
  * Contains all state properties needed for the scoreboard application
@@ -10,6 +12,9 @@ export interface ScoreboardState {
     // Team data
     team1: Team;
     team2: Team;
+
+    // Scoring behavior
+    scoringMode?: ScoringMode; // 'round' -> points added via endRound; 'manual' -> points adjusted via manual controls
     
     // Display elements
     logoUrl: string | null;

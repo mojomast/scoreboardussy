@@ -10,6 +10,7 @@ import { getInitialRoundState } from './rounds/state';
 let state: ScoreboardState = {
     ...getInitialTeamState(),
     ...getInitialUiState(),
+    scoringMode: 'round',
     rounds: getInitialRoundState()
 };
 

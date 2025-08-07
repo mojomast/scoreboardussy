@@ -88,25 +88,29 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
             notes: payload.notes
         };
 
-        // Calculate new total scores
-        const newTeam1Score = (state.team1.score || 0) + payload.points.team1;
-        const newTeam2Score = (state.team2.score || 0) + payload.points.team2;
-
         // Update history with new entry
         const history = [...getRoundHistory(), historyEntry];
         updateRoundHistory(history);
 
-        // Update team scores with the accumulated totals
-        updateState({
-            team1: {
-                ...state.team1,
-                score: newTeam1Score
-            },
-            team2: {
-                ...state.team2,
-                score: newTeam2Score
-            }
-        });
+        // Update team scores based on scoring mode
+        const mode = state.scoringMode || 'round';
+        if (mode === 'round') {
+            const newTeam1Score = (state.team1.score || 0) + payload.points.team1;
+            const newTeam2Score = (state.team2.score || 0) + payload.points.team2;
+            updateState({
+                team1: {
+                    ...state.team1,
+                    score: newTeam1Score
+                },
+                team2: {
+                    ...state.team2,
+                    score: newTeam2Score
+                }
+            });
+        } else {
+            // In manual mode, do not change team totals here
+            updateState({});
+        }
 
         // Clear current round
         setCurrentRound(null);
