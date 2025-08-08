@@ -15,7 +15,7 @@ const ROUND_DATA_FILE = path.join(DATA_DIR, 'round_state.json');
  */
 export const persistRoundState = (
     rounds: RoundState
-): boolean => {
+): boolean => {
     try {
         if (!fs.existsSync(DATA_DIR)) {
             fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -33,7 +33,7 @@ export const persistRoundState = (
  * Load persisted unified rounds state from storage (server-side only)
  * @returns True if loading succeeded and state was updated
  */
-export const loadPersistedRoundState = (): boolean => {
+export const loadPersistedRoundState = (): boolean => {
     try {
         if (fs.existsSync(ROUND_DATA_FILE)) {
             const { rounds } = JSON.parse(fs.readFileSync(ROUND_DATA_FILE, 'utf-8'));
@@ -55,7 +55,7 @@ export const loadPersistedRoundState = (): boolean => {
  * Clear all persisted unified rounds state from storage
  * @returns True if clearing succeeded
  */
-export const clearPersistedRoundState = (): boolean => {
+export const clearPersistedRoundState = (): boolean => {
     try {
         if (fs.existsSync(ROUND_DATA_FILE)) {
             fs.unlinkSync(ROUND_DATA_FILE);
@@ -71,7 +71,7 @@ export const clearPersistedRoundState = (): boolean => {
 /**
  * Reset to default state when there's an error loading
  */
-const resetToDefaults = (): void => {
+const resetToDefaults = (): void => {
     const initialState = getInitialRoundState();
     setRoundState(initialState);
     console.log('Reset to default unified rounds state due to loading error');
@@ -83,6 +83,6 @@ const resetToDefaults = (): void => {
  */
 export const autoSaveRoundState = (
     rounds: RoundState
-): void => {
+): void => {
     persistRoundState(rounds);
 };

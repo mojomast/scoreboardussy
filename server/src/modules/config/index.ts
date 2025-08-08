@@ -80,6 +80,7 @@ export const configureLogging = (isProduction: boolean = false) => {
     } else {
         // Development logging
         console.log('Development logging enabled');
+        console.log('[build-check] rounds/actions.ts auto-advance banner active');
     }
 };
 

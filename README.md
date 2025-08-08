@@ -1,5 +1,7 @@
 # Scoreboardussy 🏆
 
+Version 0.4.0
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
 [![React](https://img.shields.io/badge/Frontend-React-blue.svg)](https://reactjs.org/)  
@@ -162,6 +164,16 @@ scoreboardussy/
 ```
 
 </details>
+
+### 🧰 What Changed
+
+- New dockable Settings panel with toggle in header; can view Settings side-by-side with Teams/Rounds
+- Modular Settings includes Scoring Mode (Round/Manual) and Restart Match, and excludes lifecycle controls
+- CurrentRound planning: Enqueue and Next Round Draft. New Round ad‑hoc form is now only visible in Manual mode
+- Auto-advance backend logic: after End Round in Round mode, server dequeues the next upcoming round (if any) and starts it; falls back to saved draft
+- Build-check banner added to server startup logs to verify you’re running the new build
+- Various UI fixes: team name Update button moved below input, equal-width team panels, minor layout polish
+- Bugfixes and robustness improvements across client and server
 
 ### 🧰 What Changed (Modularization)
 

@@ -19,7 +19,8 @@ import {
     SaveTemplatePayload,
     RoundTemplate,
     RoundPlaylist,
-    CreatePlaylistPayload
+    CreatePlaylistPayload,
+    RoundConfig
 } from './rounds.types';
 
 // Server -> Client Events
@@ -44,8 +45,15 @@ export interface ClientToServerEvents {
     updateVisibility: (payload: UpdateVisibilityPayload) => void;
     switchTeamEmojis: () => void;
     
+    // Game lifecycle + planning
+    startGame: () => void;
+    finishGame: () => void;
+    setNextRoundDraft: (payload: { config: RoundConfig | null }) => void;
+    enqueueUpcoming: (payload: { config: RoundConfig }) => void;
+    dequeueUpcoming: () => void;
+    
     // Round-related events
-    startRound: (payload: StartRoundPayload) => void;
+    startRound: (payload: Partial<StartRoundPayload> & { config?: RoundConfig }) => void;
     endRound: (payload: EndRoundPayload) => void;
     updateRoundSetting: (payload: UpdateRoundSettingsPayload) => void;
     resetRounds: () => void;

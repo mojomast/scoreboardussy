@@ -5,10 +5,12 @@ import { RoundType } from '@server-types/rounds.types';
 const RoundControls: React.FC = () => {
   const { state, startRound, endRound } = useScoreboard();
   const currentRound = state?.rounds.current;
+  const isBetween = state?.rounds?.isBetweenRounds === true;
+  const gameStatus = (state as any)?.rounds?.gameStatus ?? 'notStarted';
 
   // Handler for ending the current round
   const handleEndRound = () => {
-    if (currentRound) {
+    if (currentRound && !isBetween) {
       endRound({
         points: { team1: 0, team2: 0 }, // Default points
         penalties: {
@@ -35,13 +37,17 @@ const RoundControls: React.FC = () => {
     startRound(newRoundConfig);
   };
 
+  const showCurrent = gameStatus === 'live' && !!currentRound && !isBetween;
+  const roundType = currentRound?.type ?? 'shortform';
+  const roundTheme = currentRound?.theme ?? '';
+
   return (
     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-600">
       <h4 className="text-md font-semibold mb-2 text-gray-800 dark:text-white">Round Controls</h4>
-      {currentRound ? (
+      {showCurrent ? (
         <>
           <div className="mb-2">
-            <span className="font-medium">Current Round:</span> {currentRound.theme || 'N/A'} (Type: {currentRound.type})
+            <span className="font-medium">Current Round:</span> {roundTheme || 'N/A'} (Type: {roundType})
           </div>
           <button
             className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded mr-2"
@@ -51,12 +57,16 @@ const RoundControls: React.FC = () => {
           </button>
         </>
       ) : (
-        <button
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded"
-          onClick={handleStartRound}
-        >
-          Start New Round
-        </button>
+        gameStatus === 'live' ? (
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded"
+            onClick={handleStartRound}
+          >
+            Start New Round
+          </button>
+        ) : (
+          <span className="text-sm text-gray-600 dark:text-gray-300">No active round</span>
+        )
       )}
     </div>
   );

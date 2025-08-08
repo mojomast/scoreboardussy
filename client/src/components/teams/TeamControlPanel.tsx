@@ -77,18 +77,18 @@ const TeamControlPanel: React.FC<TeamControlPanelProps> = ({ team, teamId }) => 
                 <label htmlFor={`${team.id}-name`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {t('teamControl.teamNameLabel')}
                 </label>
-                <div className="flex items-center space-x-2"> 
+                <div className="flex flex-col space-y-2">
                     <input 
                         type="text"
                         id={`${team.id}-name`}
                         value={localName}
                         onChange={handleNameChange}
-                        className="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
                         placeholder={t('teamControl.teamNamePlaceholder')}
                     />
                     <button 
                         onClick={handleUpdateNameClick}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                         disabled={localName === team.name || localName.trim() === ''} 
                     >
                         {t('teamControl.updateNameBtn')}

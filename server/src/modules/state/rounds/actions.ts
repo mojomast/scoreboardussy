@@ -10,9 +10,18 @@ import {
     getRoundHistory, 
     getNewRoundConfig, 
     setCurrentRound, 
-    updateRoundHistory 
+    updateRoundHistory,
+    // planning + lifecycle helpers
+    setNextRoundDraft,
+    enqueueUpcoming,
+    dequeueUpcoming,
+    setGameStatus
 } from './state';
 import { getState, updateState } from '../index';  // Add this import
+import fs from 'fs';
+import path from 'path';
+import { generateHTMLReport } from '../../export/generateReport';
+import { RoundUISettings } from '../../../types/ui.types';
 
 // TODO: Timer integration
 // import { startTimer, stopTimer, resetTimer } from '../timer';
@@ -53,6 +62,12 @@ export const advanceRound = (config: RoundConfig): RoundConfig | null => {
  */
 export const startRound = (payload: StartRoundPayload): RoundConfig | null => {
     try {
+        // Ensure game is live in round mode so endRound can auto-advance
+        const state = getState();
+        const mode = state.scoringMode || 'round';
+        if (mode === 'round' && state.rounds.gameStatus !== 'live') {
+            setGameStatus('live');
+        }
         return advanceRound(payload.config);
     } catch (error) {
         console.error('Fuck! Error starting round:', error);
@@ -75,8 +90,10 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
         }
 
         // Create history entry from current round + results
+        const nextNumber = getRoundHistory().length + 1;
         const historyEntry: RoundHistory = {
             ...currentRound,
+            number: nextNumber,
             points: {
                 team1: payload.points.team1,  // Store the points earned in this round
                 team2: payload.points.team2   // Store the points earned in this round
@@ -93,8 +110,8 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
         updateRoundHistory(history);
 
         // Update team scores based on scoring mode
-        const mode = state.scoringMode || 'round';
-        if (mode === 'round') {
+        const scoringMode = state.scoringMode || 'round';
+        if (scoringMode === 'round') {
             const newTeam1Score = (state.team1.score || 0) + payload.points.team1;
             const newTeam2Score = (state.team2.score || 0) + payload.points.team2;
             updateState({
@@ -112,18 +129,159 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
             updateState({});
         }
 
-        // Clear current round
-        setCurrentRound(null);
+        // Auto-advance to next round when in round mode
+        const scoringMode2 = state.scoringMode || 'round';
+        const shouldAutoAdvance = (scoringMode2 === 'round');
+        if (shouldAutoAdvance && state.rounds.gameStatus !== 'live') {
+            // Make it robust: mark live so the lifecycle remains consistent
+            setGameStatus('live');
+        }
+        if (shouldAutoAdvance) {
+            const freshState = getState();
+            const queueLen = (freshState.rounds.upcoming || []).length;
+            console.log(`[rounds] Auto-advance enabled. Upcoming length: ${queueLen}`);
+            const nextQueued = (freshState.rounds.upcoming && freshState.rounds.upcoming[0]) || null;
+            if (nextQueued && validateRoundConfig(nextQueued)) {
+                console.log('[rounds] Advancing to next queued round:', nextQueued);
+                const dequeued = dequeueUpcoming();
+                if (dequeued) {
+                    const nextRoundNumber = history.length + 1; // after push above
+                    setCurrentRound({ ...dequeued, number: nextRoundNumber });
+                    console.log(`[rounds] Set current to queued round #${nextRoundNumber}`);
+                } else {
+                    console.warn('[rounds] Dequeue returned null unexpectedly. Staying between rounds.');
+                    setCurrentRound(null);
+                }
+            } else {
+                // Fallback: if a valid Next Round Draft exists, use it
+                const draft = freshState.rounds.nextRoundDraft;
+                if (draft && validateRoundConfig(draft)) {
+                    const nextRoundNumber = history.length + 1;
+                    setCurrentRound({ ...draft, number: nextRoundNumber });
+                    setNextRoundDraft(null);
+                    console.log('[rounds] No queued round. Using saved draft for next round.');
+                } else {
+                    console.log('[rounds] No queued round or draft. Remaining between rounds.');
+                    setCurrentRound(null);
+                }
+            }
+        } else {
+            // Default behavior: go to between-rounds state
+            console.log('[rounds] Game not live; not auto-advancing.');
+            setCurrentRound(null);
+        }
 
         // TODO: Reset timer if it was started
         // resetTimer();
 
         console.log(`Saved results for round ${currentRound.number}`);
         console.log('Round points:', payload.points);
-        console.log('New total scores:', { team1: newTeam1Score, team2: newTeam2Score });
         return history;
     } catch (error) {
         console.error('Damn it! Error saving round results:', error);
+        return null;
+    }
+};
+
+/**
+ * Start the game lifecycle. In round mode, requires a draft or upcoming item to begin.
+ * - If nextRoundDraft exists and is valid, start that round and clear the draft.
+ * - Else, if upcoming has at least one valid config, dequeue and start it.
+ * - Sets gameStatus to 'live'. In manual mode, simply sets gameStatus to 'live' with no enforcement.
+ * @returns True if the game was started (or set live in manual mode)
+ */
+export const startGame = (): boolean => {
+    try {
+        const state = getState();
+        const mode = state.scoringMode || 'round';
+
+        // Always mark live
+        setGameStatus('live');
+
+        if (mode === 'manual') {
+            // No enforcement in manual mode
+            return true;
+        }
+
+        // Round mode enforcement
+        // Prefer the upcoming queue order if available; otherwise fall back to draft
+        const firstQueued = (state.rounds.upcoming && state.rounds.upcoming[0]) || null;
+        if (firstQueued && validateRoundConfig(firstQueued)) {
+            const dequeued = dequeueUpcoming();
+            if (dequeued) {
+                setCurrentRound({ ...dequeued, number: (state.rounds.history?.length || 0) + 1 });
+                return true;
+            }
+        }
+
+        const draft = state.rounds.nextRoundDraft;
+        if (draft && validateRoundConfig(draft)) {
+            setCurrentRound({ ...draft, number: (state.rounds.history?.length || 0) + 1 });
+            // Clear draft after applying
+            setNextRoundDraft(null);
+            return true;
+        }
+
+        // No valid config to start
+        console.warn('startGame called but no valid nextRoundDraft or upcoming found');
+        return false;
+    } catch (error) {
+        console.error('Error in startGame lifecycle:', error);
+        return false;
+    }
+};
+
+/**
+ * Finish the game lifecycle.
+ * - Generates an HTML report of the match to data/reports/
+ * - Clears nextRoundDraft and upcoming queues
+ * - Sets gameStatus to 'finished'
+ * - Resets current round to between-rounds state
+ * @returns The path to the generated report file, or null if generation failed
+ */
+export const finishGame = (): string | null => {
+    try {
+        const state = getState();
+
+        // Generate report HTML
+        const ui: RoundUISettings = {
+            showRoundHeader: true,
+            showRoundTheme: true,
+            showPlayerLimits: true,
+            showTimeLimit: true,
+            historyColumns: { theme: true, type: true, mode: true, duration: true }
+        };
+        const html = generateHTMLReport(state, ui);
+
+        // Ensure output dir exists
+        const DATA_DIR = path.resolve(process.cwd(), 'data');
+        const REPORTS_DIR = path.join(DATA_DIR, 'reports');
+        if (!fs.existsSync(REPORTS_DIR)) {
+            fs.mkdirSync(REPORTS_DIR, { recursive: true });
+        }
+        const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+        const filePath = path.join(REPORTS_DIR, `match_report_${timestamp}.html`);
+        fs.writeFileSync(filePath, html, 'utf-8');
+
+        // Clear planning queues and mark finished
+        updateState({
+            rounds: {
+                ...state.rounds,
+                nextRoundDraft: null,
+                upcoming: [],
+                gameStatus: 'finished',
+                // Return to between-rounds placeholder
+                isBetweenRounds: true
+            }
+        });
+
+        // Also clear current active round to placeholder between-rounds state
+        setCurrentRound(null);
+
+        console.log(`Match report generated at: ${filePath}`);
+        return filePath;
+    } catch (error) {
+        console.error('Error in finishGame lifecycle:', error);
         return null;
     }
 };

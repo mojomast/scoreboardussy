@@ -12,18 +12,23 @@ import {
     NumberInput,
     Switch,
     Select,
-    Divider
+    Divider,
+    ActionIcon
 } from '@mantine/core';
 import { useScoreboard } from '../../contexts/ScoreboardContext';
 import { RoundType } from '@server-types/rounds.types';
 
 const CurrentRound: React.FC = () => {
     const { t } = useTranslation();
-    const { state, startRound, endRound } = useScoreboard();
+    const { state, startRound, endRound, startGame, finishGame, setNextRoundDraft, enqueueUpcoming, dequeueUpcoming } = useScoreboard();
     const { rounds } = state || {};
     const currentRound = rounds?.current;
     const isBetweenRounds = rounds?.isBetweenRounds === true;
     const roundHistory = rounds?.history || [];
+    const scoringMode = (state as any)?.scoringMode ?? 'round';
+    const gameStatus = (rounds as any)?.gameStatus ?? 'notStarted';
+    const nextRoundDraft = (rounds as any)?.nextRoundDraft ?? null;
+    const upcoming = ((rounds as any)?.upcoming ?? []) as any[];
 
     // Local state for new round form
     const [roundType, setRoundType] = useState<RoundType>(RoundType.SHORTFORM);
@@ -87,10 +92,141 @@ const CurrentRound: React.FC = () => {
         label: type.charAt(0).toUpperCase() + type.slice(1)
     }));
 
+    // Hide round constructs in manual mode
+    if (scoringMode === 'manual') {
+        return (
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="md">{t('rounds.manualModeTitle', 'Rounds disabled in Manual Mode')}</Title>
+                <Text c="dimmed">{t('rounds.manualModeHint', 'Switch to Round mode to plan and run rounds.')}</Text>
+            </Paper>
+        );
+    }
+
     return (
         <Stack gap="xl">
-            {/* New Round Form */}
-            {(!currentRound || isBetweenRounds) && (
+            {/* Lifecycle controls (visible in round mode) */}
+            <Paper shadow="xs" p="md">
+                <Group justify="space-between" mb="sm">
+                    <Title order={4}>{t('rounds.lifecycle', 'Match Lifecycle')}</Title>
+                    <Group>
+                        <Button color="green" onClick={startGame} disabled={!isBetweenRounds || gameStatus === 'live'}>
+                            {t('rounds.startGame', 'Start Game')}
+                        </Button>
+                        <Button color="red" variant="filled" onClick={finishGame} disabled={gameStatus !== 'live'}>
+                            {t('rounds.finishGame', 'Finish Game')}
+                        </Button>
+                    </Group>
+                </Group>
+
+                {/* Next Round Draft editor */}
+                <Title order={5} mb="sm">{t('rounds.nextDraft', 'Next Round Draft')}</Title>
+                <Group grow mb="md">
+                    <Select
+                        label={t('rounds.typeLabel', 'Round Type')}
+                        value={roundType}
+                        onChange={(value) => value && setRoundType(value as RoundType)}
+                        data={roundTypeOptions}
+                        required
+                    />
+                    
+                    <TextInput
+                        label={t('rounds.themeLabel', 'Theme')}
+                        value={theme}
+                        onChange={(e) => setTheme(e.target.value)}
+                        placeholder={t('rounds.themePlaceholder', 'Optional theme')}
+                    />
+                </Group>
+                
+                <Group grow mb="md">
+                    <NumberInput
+                        label={t('rounds.minPlayersLabel', 'Min Players')}
+                        value={minPlayers}
+                        onChange={(value) => setMinPlayers(typeof value === 'number' ? value : 2)}
+                        min={1}
+                        max={20}
+                    />
+                    
+                    <NumberInput
+                        label={t('rounds.maxPlayersLabel', 'Max Players')}
+                        value={maxPlayers}
+                        onChange={(value) => setMaxPlayers(typeof value === 'number' ? value : 8)}
+                        min={1}
+                        max={20}
+                    />
+                    
+                    <NumberInput
+                        label={t('rounds.timeLimitLabel', 'Time Limit (seconds)')}
+                        value={timeLimit ?? ''}
+                        onChange={(value) => setTimeLimit(typeof value === 'number' ? value : null)}
+                        min={0}
+                        placeholder="No limit"
+                    />
+                </Group>
+
+                <Group align="flex-end" justify="space-between">
+                    <Switch
+                        label={t('rounds.mixedTeamsLabel', 'Mixed Teams')}
+                        checked={isMixed}
+                        onChange={(e) => setIsMixed(e.currentTarget.checked)}
+                    />
+                    <Group>
+                        <Button
+                            onClick={() => {
+                                const nextNumber = roundHistory.length + 1;
+                                const config = {
+                                    number: nextNumber,
+                                    type: roundType,
+                                    isMixed,
+                                    theme,
+                                    minPlayers,
+                                    maxPlayers,
+                                    timeLimit
+                                };
+                                setNextRoundDraft(config);
+                            }}
+                            color="blue"
+                        >
+                            {t('rounds.saveDraft', 'Save Draft')}
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                const nextNumber = roundHistory.length + 1;
+                                const config = {
+                                    number: nextNumber,
+                                    type: roundType,
+                                    isMixed,
+                                    theme,
+                                    minPlayers,
+                                    maxPlayers,
+                                    timeLimit
+                                };
+                                enqueueUpcoming(config);
+                            }}
+                            variant="light"
+                        >
+                            {t('rounds.enqueue', 'Enqueue')}
+                        </Button>
+                    </Group>
+                </Group>
+
+                {nextRoundDraft && (
+                    <Text size="sm" c="dimmed" mt="sm">
+                        {t('rounds.draftSaved', 'Draft saved')}: {nextRoundDraft.type} {nextRoundDraft.theme ? `- ${nextRoundDraft.theme}` : ''}
+                    </Text>
+                )}
+
+                {upcoming.length > 0 && (
+                    <Group mt="sm" gap="xs">
+                        {upcoming.map((u, idx) => (
+                            <Badge key={idx} variant="outline">{u.type}{u.theme ? `: ${u.theme}` : ''}</Badge>
+                        ))}
+                        <ActionIcon onClick={() => dequeueUpcoming()} title={t('rounds.dequeue', 'Dequeue next')}>↙️</ActionIcon>
+                    </Group>
+                )}
+            </Paper>
+
+            {/* New Round Form (only for Manual scoring mode) */}
+            {scoringMode === 'manual' && (!currentRound || isBetweenRounds) && (
                 <Paper shadow="xs" p="md">
                     <Title order={4} mb="md">{t('rounds.newRound', 'New Round')}</Title>
                     
@@ -158,7 +294,7 @@ const CurrentRound: React.FC = () => {
             {/* Current Round Section */}
             <Paper shadow="xs" p="md">
                 <Title order={4} mb="md">{t('rounds.currentRound', 'Current Round')}</Title>
-                {currentRound && !isBetweenRounds ? (
+                {gameStatus === 'live' && currentRound && !isBetweenRounds ? (
                     <>
                         <Group>
                             <Badge size="lg">
@@ -211,6 +347,7 @@ const CurrentRound: React.FC = () => {
                             onClick={handleEndRound} 
                             color="red" 
                             fullWidth
+                            disabled={gameStatus !== 'live'}
                         >
                             {t('rounds.endRoundButton', 'End Round & Save Results')}
                         </Button>

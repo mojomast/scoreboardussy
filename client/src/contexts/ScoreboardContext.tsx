@@ -40,9 +40,16 @@ interface ScoreboardContextType {
     updateRoundSetting: (target: keyof ScoreboardState['rounds']['settings'], visible: boolean) => void;
     resetAll: () => void;
     switchTeamEmojis: () => void;
+    // Rounds
     startRound: (config: RoundConfig) => void;
     endRound: (results: EndRoundPayload) => void;
     setScoringMode: (mode: 'round' | 'manual') => void;
+    // Lifecycle + planning
+    startGame: () => void;
+    finishGame: () => void;
+    setNextRoundDraft: (config: RoundConfig | null) => void;
+    enqueueUpcoming: (config: RoundConfig) => void;
+    dequeueUpcoming: () => void;
     // Template management methods
     saveTemplate: (template: SaveTemplatePayload) => void;
     updateTemplate: (id: string, updates: Partial<RoundTemplate>) => void;
@@ -106,7 +113,7 @@ const initialClientState: ScoreboardState = {
             timeLimit: null
         },
         history: [],
-        isBetweenRounds: false,
+        isBetweenRounds: true,
         templates: [],
         playlists: [],
         settings: {
@@ -132,7 +139,11 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
     const normalizeServerState = (s: any): ScoreboardState => {
         const base: ScoreboardState = JSON.parse(JSON.stringify(initialClientState));
 
-        // Teams
+        // Scoring mode (affects how totals are derived)
+        const mode: 'round' | 'manual' = (s.scoringMode === 'manual' ? 'manual' : 'round');
+        (base as any).scoringMode = mode;
+
+        // Teams (copy over primitive props)
         if (s.team1) base.team1 = { ...base.team1, ...s.team1 };
         if (s.team2) base.team2 = { ...base.team2, ...s.team2 };
 
@@ -151,27 +162,33 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         if ('team1Emoji' in s) base.team1Emoji = s.team1Emoji;
         if ('team2Emoji' in s) base.team2Emoji = s.team2Emoji;
 
-        // Rounds: server uses currentRound/roundHistory/roundSettings
-        const currentRound = s.currentRound;
-        const roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
-        const roundSettings = s.roundSettings || {};
+        // Rounds: prefer unified server shape (s.rounds), fall back to legacy fields
+        const roundsFromServer = s.rounds || {};
+        const currentRound = roundsFromServer.current || s.currentRound || null;
+        const roundHistory = Array.isArray(roundsFromServer.history)
+            ? roundsFromServer.history
+            : (Array.isArray(s.roundHistory) ? s.roundHistory : []);
+        const roundSettings = roundsFromServer.settings || s.roundSettings || {};
+        const gameStatus = roundsFromServer.gameStatus ?? 'notStarted';
+        const nextRoundDraft = roundsFromServer.nextRoundDraft ?? null;
+        const upcoming = Array.isArray(roundsFromServer.upcoming) ? roundsFromServer.upcoming : [];
+        const serverBetween = roundsFromServer.isBetweenRounds;
 
-        // Map current round if present
+        // Map current round placeholder from server, but respect server between-rounds flag
         if (currentRound) {
             base.rounds.current = {
                 number: currentRound.number ?? base.rounds.current.number,
-                type: currentRound.type as RoundType ?? base.rounds.current.type,
+                type: (currentRound.type as RoundType) ?? base.rounds.current.type,
                 isMixed: !!currentRound.isMixed,
                 theme: currentRound.theme ?? '',
                 minPlayers: currentRound.minPlayers ?? base.rounds.current.minPlayers,
                 maxPlayers: currentRound.maxPlayers ?? base.rounds.current.maxPlayers,
                 timeLimit: currentRound.timeLimit ?? base.rounds.current.timeLimit,
             };
-            base.rounds.isBetweenRounds = false;
-        } else {
-            // If no current round from server, we are between rounds
-            base.rounds.isBetweenRounds = true;
         }
+        // Prefer explicit server flag when provided; otherwise infer from presence of currentRound
+        base.rounds.isBetweenRounds =
+            typeof serverBetween === 'boolean' ? serverBetween : !currentRound;
 
         // Map history entries (provide safe defaults for points/penalties)
         base.rounds.history = roundHistory.map((r: any) => ({
@@ -187,18 +204,23 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
             notes: r.notes ?? undefined,
         }));
 
-        // Derive team totals from history if server did not include them
-        const derivedTotals = base.rounds.history.reduce(
-            (acc, r) => {
-                acc.team1 += r.points?.team1 ?? 0;
-                acc.team2 += r.points?.team2 ?? 0;
-                return acc;
-            },
-            { team1: 0, team2: 0 }
-        );
-        // Always derive totals from history; server team scores are not authoritative
-        base.team1.score = derivedTotals.team1;
-        base.team2.score = derivedTotals.team2;
+        // Derive or trust totals depending on mode
+        if (mode === 'round') {
+            const derivedTotals = base.rounds.history.reduce(
+                (acc, r) => {
+                    acc.team1 += r.points?.team1 ?? 0;
+                    acc.team2 += r.points?.team2 ?? 0;
+                    return acc;
+                },
+                { team1: 0, team2: 0 }
+            );
+            base.team1.score = derivedTotals.team1;
+            base.team2.score = derivedTotals.team2;
+        } else {
+            // manual mode: use server-provided totals
+            if (typeof s.team1?.score === 'number') base.team1.score = s.team1.score;
+            if (typeof s.team2?.score === 'number') base.team2.score = s.team2.score;
+        }
 
         // Map settings (server may use different keys; e.g., showTimer)
         base.rounds.settings = {
@@ -210,6 +232,11 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
             showTimeLimit: (roundSettings.showTimeLimit ?? roundSettings.showTimer) ?? base.rounds.settings.showTimeLimit,
             showRoundHistory: roundSettings.showRoundHistory ?? base.rounds.settings.showRoundHistory,
         };
+
+        // Attach lifecycle/planning fields (not part of strict client type but useful)
+        (base as any).rounds.gameStatus = gameStatus;
+        (base as any).rounds.nextRoundDraft = nextRoundDraft;
+        (base as any).rounds.upcoming = upcoming;
 
         return base;
     };
@@ -316,6 +343,27 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
 
     const switchTeamEmojis = useCallback(() => {
         socketManager.emit('switchTeamEmojis');
+    }, []);
+
+    // Lifecycle + planning emitters
+    const startGame = useCallback(() => {
+        socketManager.emit('startGame');
+    }, []);
+
+    const finishGame = useCallback(() => {
+        socketManager.emit('finishGame');
+    }, []);
+
+    const setNextRoundDraft = useCallback((config: RoundConfig | null) => {
+        socketManager.emit('setNextRoundDraft', { config });
+    }, []);
+
+    const enqueueUpcoming = useCallback((config: RoundConfig) => {
+        socketManager.emit('enqueueUpcoming', { config });
+    }, []);
+
+    const dequeueUpcoming = useCallback(() => {
+        socketManager.emit('dequeueUpcoming');
     }, []);
 
     const startRound = useCallback((config: RoundConfig) => {
@@ -512,6 +560,12 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         startRound,
         endRound,
         setScoringMode,
+        // Lifecycle + planning
+        startGame,
+        finishGame,
+        setNextRoundDraft,
+        enqueueUpcoming,
+        dequeueUpcoming,
         // Template management
         saveTemplate,
         updateTemplate,
@@ -547,6 +601,11 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         startRound,
         endRound,
         setScoringMode,
+        startGame,
+        finishGame,
+        setNextRoundDraft,
+        enqueueUpcoming,
+        dequeueUpcoming,
         saveTemplate,
         updateTemplate,
         deleteTemplate,

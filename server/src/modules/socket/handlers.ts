@@ -24,6 +24,12 @@ import {
     resetRounds,
     createNextRound,
     updateRoundSetting,
+    // Planning + lifecycle
+    setNextRoundDraft,
+    enqueueUpcoming,
+    dequeueUpcoming,
+    startGame,
+    finishGame,
     // Template management
     saveTemplate,
     updateTemplate,
@@ -159,12 +165,79 @@ export const initializeSocketHandlers = (io: IoServer) => {
         });
 
         // Fucking round system handlers
+
+        // Planning helpers
+        socket.on('setNextRoundDraft', (payload) => {
+            console.log(`Received setNextRoundDraft from ${socket.id}`);
+            try {
+                setNextRoundDraft(payload?.config ?? null);
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error handling setNextRoundDraft:', error);
+                socket.emit('updateState', getState());
+            }
+        });
+
+        socket.on('enqueueUpcoming', (payload) => {
+            console.log(`Received enqueueUpcoming from ${socket.id}`);
+            try {
+                enqueueUpcoming(payload.config);
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error handling enqueueUpcoming:', error);
+                socket.emit('updateState', getState());
+            }
+        });
+
+        socket.on('dequeueUpcoming', () => {
+            console.log(`Received dequeueUpcoming from ${socket.id}`);
+            try {
+                const removed = dequeueUpcoming();
+                console.log('Dequeued upcoming:', removed);
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error handling dequeueUpcoming:', error);
+                socket.emit('updateState', getState());
+            }
+        });
+        
+        // Game lifecycle
+        socket.on('startGame', () => {
+            console.log(`Received startGame from ${socket.id}`);
+            try {
+                const ok = startGame();
+                if (!ok) {
+                    console.warn('startGame rejected: no valid draft or upcoming');
+                }
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error handling startGame:', error);
+                socket.emit('updateState', getState());
+            }
+        });
+
+        socket.on('finishGame', () => {
+            console.log(`Received finishGame from ${socket.id}`);
+            try {
+                const reportPath = finishGame();
+                console.log('Finish game report path:', reportPath);
+                broadcastState(io);
+            } catch (error) {
+                console.error('Error handling finishGame:', error);
+                socket.emit('updateState', getState());
+            }
+        });
         
         // Handle starting a new round
         socket.on('startRound', (payload) => {
-            console.log(`Received startRound from ${socket.id}, round #${payload.config.number}`);
             try {
-                const result = startRound(payload);
+                if (!payload || !payload.config) {
+                    console.warn(`Received startRound without config from ${socket.id}`);
+                    socket.emit('updateState', getState());
+                    return;
+                }
+                console.log(`Received startRound from ${socket.id}, round #${payload.config.number}`);
+                const result = startRound({ config: payload.config });
                 if (result) {
                     console.log(`Successfully started round ${payload.config.number} of type ${payload.config.type}`);
                     broadcastState(io);

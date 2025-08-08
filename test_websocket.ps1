@@ -78,6 +78,41 @@ WebSocket Testing Guide:
 
 # ROUND SYSTEM TESTS
 
+# Planning: set a Next Round Draft
+{
+    "setNextRoundDraft": {
+        "config": {
+            "number": 1,
+            "isMixed": false,
+            "theme": "Opening Game",
+            "type": "shortform",
+            "minPlayers": 2,
+            "maxPlayers": 4,
+            "timeLimit": 180
+        }
+    }
+}
+
+# Planning: enqueue an upcoming round
+{
+    "enqueueUpcoming": {
+        "config": {
+            "number": 2,
+            "isMixed": true,
+            "theme": "Genre Mashup",
+            "type": "challenge",
+            "minPlayers": 3,
+            "maxPlayers": 5,
+            "timeLimit": 300
+        }
+    }
+}
+
+# Lifecycle: start the game (uses draft or first upcoming)
+{
+    "startGame": {}
+}
+
 # Create next round (shortform)
 {
     "createNextRound": "shortform"
@@ -117,6 +152,11 @@ WebSocket Testing Guide:
         },
         "notes": "Team 1 had excellent character work"
     }
+}
+
+# Lifecycle: finish the game (generates HTML report on server)
+{
+    "finishGame": {}
 }
 
 # Create a longform round

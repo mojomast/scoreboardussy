@@ -13,6 +13,7 @@ export enum RoundType {
 // Round configuration interface
 export interface RoundConfig {
     number: number;
+    title?: string; // Display title for the round (fallback to theme if empty)
     isMixed: boolean;
     theme: string;
     type: RoundType;
@@ -73,6 +74,11 @@ export interface RoundState {
         id: string;
         currentIndex: number;    // Current position in playlist
     };
+
+    // Game lifecycle + planning
+    gameStatus?: 'notStarted' | 'live' | 'finished';
+    nextRoundDraft?: RoundConfig | null;
+    upcoming?: RoundConfig[];
 }
 
 // Template for reusable round configurations

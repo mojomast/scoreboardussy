@@ -11,6 +11,7 @@ import { getState as getGlobalState, updateState as updateGlobalState } from '..
 export const getInitialRoundState = (): RoundState => ({
     current: {
         number: 1,
+        title: '',
         isMixed: false,
         theme: '',
         type: RoundType.SHORTFORM,
@@ -19,11 +20,11 @@ export const getInitialRoundState = (): RoundState => ({
         timeLimit: null
     },
     history: [],
-    isBetweenRounds: false,
-    templates: [],      // Initialize empty templates array
-    playlists: [],     // Initialize empty playlists array
-    activePlaylist: undefined,  // No active playlist by default
-    settings: {        // Add default settings
+    isBetweenRounds: true,
+    templates: [],
+    playlists: [],
+    activePlaylist: undefined,
+    settings: {
         showRoundNumber: true,
         showTheme: true,
         showType: true,
@@ -31,7 +32,10 @@ export const getInitialRoundState = (): RoundState => ({
         showPlayerLimits: true,
         showTimeLimit: true,
         showRoundHistory: true
-    }
+    },
+    gameStatus: 'notStarted',
+    nextRoundDraft: null,
+    upcoming: []
 });
 
 export const getCurrentRound = (): RoundConfig => {
@@ -47,12 +51,14 @@ export const getNewRoundConfig = (type: RoundType, number: number): RoundConfig 
     maxPlayers: 8,
     timeLimit: null
 });
-
 export const setCurrentRound = (round: RoundConfig | null): void => {
+    const state = getGlobalState();
     if (round === null) {
-        updateGlobalState({ rounds: { ...getGlobalState().rounds, current: getInitialRoundState().current } });
+        // Between rounds: keep a default placeholder current config but mark betweenRounds = true
+        updateGlobalState({ rounds: { ...state.rounds, current: getInitialRoundState().current, isBetweenRounds: true } });
     } else {
-        updateGlobalState({ rounds: { ...getGlobalState().rounds, current: round } });
+        // Active round: set current and mark betweenRounds = false
+        updateGlobalState({ rounds: { ...state.rounds, current: round, isBetweenRounds: false } });
     }
 };
 
@@ -93,4 +99,30 @@ export const setRoundState = (rounds: RoundState): void => {
 
 export const resetRoundState = (): void => {
     updateGlobalState({ rounds: getInitialRoundState() });
+};
+
+// --- Planning helpers ---
+export const setNextRoundDraft = (draft: RoundConfig | null): void => {
+    const state = getGlobalState();
+    updateGlobalState({ rounds: { ...state.rounds, nextRoundDraft: draft } });
+};
+
+export const enqueueUpcoming = (config: RoundConfig): void => {
+    const state = getGlobalState();
+    const list = state.rounds.upcoming || [];
+    updateGlobalState({ rounds: { ...state.rounds, upcoming: [...list, config] } });
+};
+
+export const dequeueUpcoming = (): RoundConfig | null => {
+    const state = getGlobalState();
+    const list = [...(state.rounds.upcoming || [])];
+    if (list.length === 0) return null;
+    const first = list.shift()!;
+    updateGlobalState({ rounds: { ...state.rounds, upcoming: list } });
+    return first;
+};
+
+export const setGameStatus = (status: 'notStarted' | 'live' | 'finished'): void => {
+    const state = getGlobalState();
+    updateGlobalState({ rounds: { ...state.rounds, gameStatus: status } });
 };

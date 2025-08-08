@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { MantineProvider } from '@mantine/core';
 import { ScoreboardProvider } from './contexts/ScoreboardContext';
-import ScoreboardDisplay from './components/ScoreboardDisplay';
-import ScoreboardControl from './components/ScoreboardControl';
+import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
+import ScoreboardControl from './components/scoreboard/ScoreboardControl';
 
 // Import Mantine core styles
 import '@mantine/core/styles.css';

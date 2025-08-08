@@ -3,7 +3,7 @@
     "id": "team1",
     "name": "Blue Team",
     "color": "#3b82f6",
-    "score": 0,
+    "score": 1,
     "penalties": {
       "major": 0,
       "minor": 0
@@ -13,7 +13,7 @@
     "id": "team2",
     "name": "Red Team",
     "color": "#ef4444",
-    "score": 0,
+    "score": 2,
     "penalties": {
       "major": 0,
       "minor": 0
@@ -40,17 +40,95 @@
   "showEmojis": true,
   "team1Emoji": null,
   "team2Emoji": null,
+  "scoringMode": "round",
   "rounds": {
     "current": {
-      "number": 1,
+      "number": 3,
+      "title": "",
       "isMixed": false,
-      "theme": "",
+      "theme": "3",
       "type": "shortform",
       "minPlayers": 2,
       "maxPlayers": 8,
-      "timeLimit": null
+      "timeLimit": 1
     },
-    "history": [],
+    "history": [
+      {
+        "number": 1,
+        "title": "",
+        "isMixed": false,
+        "theme": "1",
+        "type": "shortform",
+        "minPlayers": 2,
+        "maxPlayers": 8,
+        "timeLimit": 1,
+        "points": {
+          "team1": 1,
+          "team2": 0
+        },
+        "penalties": {
+          "team1": {
+            "major": 0,
+            "minor": 0
+          },
+          "team2": {
+            "major": 0,
+            "minor": 0
+          }
+        },
+        "notes": "a"
+      },
+      {
+        "number": 2,
+        "title": "",
+        "isMixed": false,
+        "theme": "2",
+        "type": "shortform",
+        "minPlayers": 2,
+        "maxPlayers": 8,
+        "timeLimit": 1,
+        "points": {
+          "team1": 0,
+          "team2": 1
+        },
+        "penalties": {
+          "team1": {
+            "major": 0,
+            "minor": 0
+          },
+          "team2": {
+            "major": 0,
+            "minor": 0
+          }
+        },
+        "notes": ""
+      },
+      {
+        "number": 3,
+        "title": "",
+        "isMixed": false,
+        "theme": "3",
+        "type": "shortform",
+        "minPlayers": 2,
+        "maxPlayers": 8,
+        "timeLimit": 1,
+        "points": {
+          "team1": 0,
+          "team2": 1
+        },
+        "penalties": {
+          "team1": {
+            "major": 0,
+            "minor": 0
+          },
+          "team2": {
+            "major": 0,
+            "minor": 0
+          }
+        },
+        "notes": ""
+      }
+    ],
     "isBetweenRounds": false,
     "templates": [
       {
@@ -201,6 +279,20 @@
       "showPlayerLimits": true,
       "showTimeLimit": true,
       "showRoundHistory": true
-    }
+    },
+    "gameStatus": "live",
+    "nextRoundDraft": null,
+    "upcoming": []
+  }
+}{
+        "number": 1,
+        "type": "shortform",
+        "isMixed": false,
+        "theme": "4",
+        "minPlayers": 2,
+        "maxPlayers": 8,
+        "timeLimit": 1
+      }
+    ]
   }
 }
