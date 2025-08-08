@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useScoreboard } from '@/contexts/ScoreboardContext';
 import { TeamControlPanel } from '../teams';
 import { ScoreboardPreview } from './';
+import { CategoryMappingEditor } from './CategoryMappingEditor';
 import { CurrentRound, RoundControls } from '../rounds';
 import { 
     Container, 
@@ -47,6 +48,9 @@ const ScoreboardControl: React.FC = () => {
     } = useScoreboard();
     const { team1, team2 } = state || {};
     
+    const remote = (state as any)?.remoteControl;
+    const remoteActive = remote?.source === 'mon-pacing';
+    
     // Check if connected
     const isConnected = connectionState === 'connected';
 
@@ -64,6 +68,14 @@ const ScoreboardControl: React.FC = () => {
     const [localFooterSize, setLocalFooterSize] = useState<number>(1.25);
     const [localLogoSize, setLocalLogoSize] = useState<number>(50);
 
+    // Interop UI feedback states
+    const [importStatus, setImportStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message?: string }>({ type: 'idle' });
+    const [lockBusy, setLockBusy] = useState(false);
+    const [lockMsg, setLockMsg] = useState<{ type: 'idle' | 'success' | 'error'; message?: string }>({ type: 'idle' });
+
+    // Timer local inputs
+    const [localMinutes, setLocalMinutes] = useState<number>(2);
+    const [localSeconds, setLocalSeconds] = useState<number>(0);
     // Initialize local state from context state
     useEffect(() => {
         if (state) {
@@ -131,6 +143,26 @@ const ScoreboardControl: React.FC = () => {
             updateLogoSize({ size: value });
         }
     };
+
+    // Timer control handlers (use interop event endpoint)
+    const postEvent = async (body: any) => {
+        try {
+            await fetch('/api/interop/mon-pacing/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        } catch (e) {
+            console.error('Timer event failed', e);
+        }
+    };
+    const handleTimerStart = () => {
+        const dur = Math.max(0, Math.floor(localMinutes) * 60 + Math.floor(localSeconds));
+        postEvent({ type: 'timer', payload: { action: 'start', durationSec: dur } });
+    };
+    const handleTimerPause = () => postEvent({ type: 'pause' });
+    const handleTimerResume = () => postEvent({ type: 'resume' });
+    const handleTimerStop = () => postEvent({ type: 'timer', payload: { action: 'stop' } });
 
     const openScoreboardWindow = () => {
         window.open('#/display', '_blank', 'noopener,noreferrer');
@@ -299,7 +331,7 @@ const ScoreboardControl: React.FC = () => {
                 </Button>
             </Paper>
 
-            {/* Visibility Toggles */}
+ {/* Visibility Toggles */}
             <Paper shadow="xs" p="md">
                 <Title order={4} mb="sm">{t('scoreboardControl.visibilityTitle')}</Title>
                 <Checkbox
@@ -313,6 +345,12 @@ const ScoreboardControl: React.FC = () => {
                     label={t('scoreboardControl.showPenaltiesLabel')}
                     checked={state?.showPenalties ?? true}
                     onChange={(event) => updateVisibility({ target: 'penalties', visible: event.currentTarget.checked })}
+                    disabled={!isConnected}
+                />
+                <Checkbox
+                    label={t('scoreboardControl.showTimerLabel', 'Show Timer on Display')}
+                    checked={(state as any)?.showTimer ?? false}
+                    onChange={(event) => updateVisibility({ target: 'timer', visible: event.currentTarget.checked })}
                     disabled={!isConnected}
                 />
             </Paper>
@@ -388,6 +426,92 @@ const ScoreboardControl: React.FC = () => {
                 </Stack>
             </Paper>
 
+            {/* Mon-Pacing Plan Import */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">Mon-Pacing Plan Import</Title>
+                <Text size="sm" c="dimmed" mb="sm">Import a Mon-Pacing plan JSON to queue rounds and set teams.</Text>
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    setImportStatus({ type: 'loading', message: 'Importing…' });
+                    reader.onload = async () => {
+                      try {
+                        const body = reader.result as string;
+                        const resp = await fetch('/api/interop/mon-pacing/plan', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body,
+                        });
+                        const text = await resp.text();
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${text}`);
+                        setImportStatus({ type: 'success', message: 'Plan imported successfully' });
+                      } catch (err) {
+                        console.error('Import failed', err);
+                        setImportStatus({ type: 'error', message: 'Import failed' });
+                      } finally {
+                        e.currentTarget.value = '';
+                      }
+                    };
+                    reader.onerror = () => {
+                      setImportStatus({ type: 'error', message: 'Failed to read file' });
+                    };
+                    reader.readAsText(file);
+                  }}
+                />
+                {importStatus.type !== 'idle' && (
+                  <Text size="sm" c={importStatus.type === 'error' ? 'red' : importStatus.type === 'loading' ? 'dimmed' : 'green'} mt="xs">
+                    {importStatus.message}
+                  </Text>
+                )}
+            </Paper>
+
+            {/* Timer Controls */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">{t('scoreboardControl.timerTitle', 'Timer Controls')}</Title>
+                <Group justify="space-between" align="end" mb="sm">
+                    <div>
+                        <Text size="sm" c="dimmed">
+                            {t('scoreboardControl.timerStatus', 'Status')}: {(state as any)?.timer?.status ?? 'stopped'}
+                        </Text>
+                        {
+                          (() => {
+                            const total = Math.max(0, Math.floor(((state as any)?.timer?.remainingSec ?? 0)));
+                            const mm = Math.floor(total / 60).toString().padStart(2, '0');
+                            const ss = (total % 60).toString().padStart(2, '0');
+                            return (
+                              <Text size="xl" fw={700}>{mm}:{ss}</Text>
+                            );
+                          })()
+                        }
+                    </div>
+                    <Group>
+                        <NumberInput
+                            label={t('scoreboardControl.timerMinutes', 'Minutes')}
+                            min={0}
+                            value={localMinutes}
+                            onChange={(v) => setLocalMinutes(typeof v === 'number' ? v : 0)}
+                        />
+                        <NumberInput
+                            label={t('scoreboardControl.timerSeconds', 'Seconds')}
+                            min={0}
+                            max={59}
+                            value={localSeconds}
+                            onChange={(v) => setLocalSeconds(typeof v === 'number' ? Math.min(59, Math.max(0, v)) : 0)}
+                        />
+                    </Group>
+                </Group>
+                <Group gap="sm">
+                    <Button onClick={handleTimerStart} disabled={!isConnected}>{t('scoreboardControl.timerStart', 'Start')}</Button>
+                    <Button onClick={handleTimerPause} disabled={!isConnected}>{t('scoreboardControl.timerPause', 'Pause')}</Button>
+                    <Button onClick={handleTimerResume} disabled={!isConnected}>{t('scoreboardControl.timerResume', 'Resume')}</Button>
+                    <Button color="red" onClick={handleTimerStop} disabled={!isConnected}>{t('scoreboardControl.timerStop', 'Stop')}</Button>
+                </Group>
+            </Paper>
+
             {/* Emoji Settings */}
             <Paper shadow="xs" p="md">
                 <Title order={4} mb="sm">{t('scoreboardControl.emojiTitle')}</Title>
@@ -431,6 +555,46 @@ const ScoreboardControl: React.FC = () => {
                 </Group>
             </Group>
 
+            {/* Remote control banner */}
+            {remoteActive && (
+                <Paper shadow="xs" p="sm" withBorder mb="md">
+                    <Group justify="space-between" align="center">
+                        <Text size="sm" fw={600}>Remote controlled by Mon-Pacing</Text>
+                        <Group gap="sm">
+                            <Switch
+                                checked={!!remote?.locked}
+                                disabled={lockBusy}
+                                onChange={(e) => {
+                                    const next = e.currentTarget.checked;
+                                    setLockBusy(true);
+                                    setLockMsg({ type: 'idle' });
+                                    fetch('/api/interop/mon-pacing/lock', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ locked: next }),
+                                    })
+                                        .then(async (resp) => {
+                                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                                            setLockMsg({ type: 'success', message: next ? 'Locked' : 'Unlocked' });
+                                        })
+                                        .catch((err) => {
+                                            console.error('Lock toggle failed', err);
+                                            setLockMsg({ type: 'error', message: 'Failed to update lock' });
+                                        })
+                                        .finally(() => setLockBusy(false));
+                                }}
+                                label="Lock local overrides"
+                            />
+                            {lockMsg.type !== 'idle' && (
+                                <Text size="xs" c={lockMsg.type === 'error' ? 'red' : 'green'}>
+                                    {lockMsg.message}
+                                </Text>
+                            )}
+                        </Group>
+                    </Group>
+                </Paper>
+            )}
+
             {/* Scoreboard Preview - Always visible */}
             <Paper shadow="sm" p="md" mb="xl">
                 <Title order={3} ta="center" mb="md">
@@ -445,6 +609,7 @@ const ScoreboardControl: React.FC = () => {
                     <Tabs.List grow>
                         <Tabs.Tab value="teams" disabled={!team1 || !team2}>{t('scoreboardControl.tabTeams')}</Tabs.Tab>
                         <Tabs.Tab value="settings">{t('scoreboardControl.tabSettings')}</Tabs.Tab>
+                        <Tabs.Tab value="interop">Mon-Pacing</Tabs.Tab>
                     </Tabs.List>
 
                     {/* --- Teams Tab --- */}
@@ -479,7 +644,20 @@ const ScoreboardControl: React.FC = () => {
                         <Stack gap="xl">
                             <ScoringModePanel />
                             <SettingsPanel />
+                            <Paper shadow="xs" p="md">
+                                <Title order={4} mb="sm">Mon-Pacing Category Mapping</Title>
+                                <CategoryMappingEditor />
+                            </Paper>
                         </Stack>
+                    </Tabs.Panel>
+
+                    {/* --- Interop Tab --- */}
+                    <Tabs.Panel value="interop" pt="xs">
+                        <Paper shadow="xs" p="md">
+                            <Title order={4} mb="sm">Mon-Pacing Category Mapping</Title>
+                            <Text size="sm" c="dimmed" mb="sm">Map Mon-Pacing category strings to your Round types.</Text>
+                            <CategoryMappingEditor />
+                        </Paper>
                     </Tabs.Panel>
                 </Tabs>
             ) : (

@@ -7,7 +7,7 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest"
+    "test": "jest --config jest.config.cjs"
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",

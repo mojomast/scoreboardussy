@@ -17,7 +17,10 @@ import {
 } from './modules/config';
 import { initializeSocketHandlers } from './modules/socket/handlers';
 import apiRoutes from './modules/api/routes';
-import { loadPersistedState } from './modules/state';
+import { loadPersistedState, getState } from './modules/state';
+import { tickTimer } from './modules/state/timer';
+import { registerMonPacingInterop } from './modules/interop/monpacing';
+import { makeBearerAuth } from './modules/config';
 
 // Create Express app and HTTP server
 const app = express();
@@ -38,6 +41,17 @@ configureMiddleware(app);
 
 // Mount API routes
 app.use('/api', apiRoutes);
+
+// Optional Mon-Pacing interop (feature-gated)
+const INTEROP_ENABLED = process.env.MONPACING_INTEROP_ENABLED === '1' || process.env.MONPACING_INTEROP_ENABLED === 'true';
+if (INTEROP_ENABLED) {
+    const token = process.env.MONPACING_TOKEN || undefined;
+    const auth = makeBearerAuth(token);
+    registerMonPacingInterop(app, auth);
+    console.log('[interop] Mon-Pacing interop enabled');
+} else {
+    console.log('[interop] Mon-Pacing interop disabled (set MONPACING_INTEROP_ENABLED=1 to enable)');
+}
 
 // Configure static file serving and environment
 const isProd = isProduction();
@@ -69,7 +83,6 @@ import { initializeDefaultTemplates } from './modules/state/rounds/templates';
 // Start the server
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const listenOptions = getListenOptions(port, isProd);
-
 server.listen(listenOptions, () => {
     const address = listenOptions.host || 'localhost';
     console.log(`🚀 Server listening at http://${address}:${port}`);
@@ -82,6 +95,19 @@ server.listen(listenOptions, () => {
         console.log(`   CORS enabled for development origins.`);
         console.log(`   Run 'npm run dev:client' in another terminal for frontend.`);
     }
+
+    // Start timer tick loop
+    setInterval(() => {
+        try {
+            const s = getState();
+            if (s?.timer?.status === 'started') {
+                tickTimer();
+                // Broadcasting state is handled by updateState + sockets
+            }
+        } catch (e) {
+            console.error('Timer tick error:', e);
+        }
+    }, 1000);
 });
 
 // Handle server shutdown gracefully

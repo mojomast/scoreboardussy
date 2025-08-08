@@ -187,6 +187,22 @@ scoreboardussy/
 
 ## 🧪 Notes for Usage
 
+### Mon‑Pacing Compatibility (Live Control)
+
+- Enable interop: set environment variables before starting the server
+  - Windows (PowerShell):
+    - `$env:MONPACING_INTEROP_ENABLED = "1"`
+    - `$env:MONPACING_TOKEN = "replace_with_secret"` (optional)
+- Endpoints (base `http://<host>:3001/api/interop/mon-pacing`):
+  - `POST /plan` — import teams and rounds (Mon‑Pacing plan JSON)
+  - `POST /event` — live control events: start_round, end_round, score, penalty, set_visibility, pause/resume, timer { start|stop|set }
+  - `POST /lock` — toggle remote control lock `{ locked: boolean }`
+  - `GET /category-map` / `PUT /category-map` — configure category → RoundType mapping (persisted)
+- Client features:
+  - Control UI provides: Mon‑Pacing plan import, category mapping editor, remote-control banner with lock, timer controls (start/pause/resume/stop), and a visibility toggle to show/hide the timer on Display.
+  - Display shows MM:SS timer in the top-right when enabled; it turns red at ≤ 15s.
+- See server/src/modules/interop/MON_PACING_MAPPING.md for full concept mapping details.
+
 - Live updates are pushed automatically via WebSockets.
 - Language can be switched from the control panel.
 - Display view supports fullscreen (great for projectors or monitors).

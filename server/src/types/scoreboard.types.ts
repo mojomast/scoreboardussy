@@ -13,6 +13,12 @@ export interface ScoreboardState {
     team1: Team;
     team2: Team;
 
+    // Remote control indicator (e.g., Mon-Pacing)
+    remoteControl?: {
+        source: string | null; // 'mon-pacing' | null
+        locked?: boolean;      // if true, local UI should avoid conflicting actions
+    };
+
     // Scoring behavior
     scoringMode?: ScoringMode; // 'round' -> points added via endRound; 'manual' -> points adjusted via manual controls
     
@@ -38,6 +44,14 @@ export interface ScoreboardState {
     // Emoji states
     team1Emoji: 'hand' | 'fist' | null;
     team2Emoji: 'hand' | 'fist' | null;
+
+    // Timer (round clock)
+    timer?: {
+        status: 'started' | 'paused' | 'stopped';
+        durationSec: number;
+        remainingSec: number;
+        startedAt: number | null; // epoch ms when started/resumed
+    };
     
     // Unified round state
     rounds: RoundState;

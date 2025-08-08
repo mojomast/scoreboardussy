@@ -148,44 +148,58 @@ const ScoreboardDisplay: React.FC = () => {
                 </div>
             )}
 
-            {/* Team Panels Container (Should fill remaining space) */} 
-            {/* Ensure this container and its children fill the height */} 
-            <div className="relative flex-1 flex flex-row w-full"> 
-                 {/* Wrap each panel in a div that grows and fills height */} 
-                 <div className="flex-1 h-full"> 
+ {/* Team Panels Container (Should fill remaining space) */}
+            {/* Ensure this container and its children fill the height */}
+            <div className="relative flex-1 flex flex-row w-full">
+                 {/* Timer overlay if enabled */}
+                 {(state as any)?.showTimer && ((state?.timer?.status === 'started') || (state?.timer?.status === 'paused') || (state?.timer?.status === 'stopped')) && (
+                    <div className={absolute top-4 right-4 rounded px-3 py-1 z-40 ${(() => { const total = Math.max(0, Math.floor((state?.timer?.remainingSec ?? 0))); return total <= 15 ? 'bg-red-600 text-white' : 'bg-black/60 text-white'; })()}}
+                         {
+                           (() => {
+                             const total = Math.max(0, Math.floor((state?.timer?.remainingSec ?? 0)));
+                             const mm = Math.floor(total / 60).toString().padStart(2, '0');
+                             const ss = (total % 60).toString().padStart(2, '0');
+                             return (<span>{mm}:{ss}</span>);
+                           })()
+                         }
+                     </div>
+                 )}
+
+                 {/* Wrap each panel in a div that grows and fills height */}
+                 <div className="flex-1 h-full">
                      {team1 && (
-                        <TeamDisplayPanel 
-                            team={team1} 
-                            showScore={showScore} // PASS PROP
-                            showPenalties={showPenalties} // PASS PROP
-                            showEmojis={showEmojis} // PASS PROP
-                            emoji={team1Emoji} // PASS PROP
+                        <TeamDisplayPanel
+                            team={team1}
+                            showScore={showScore}
+                            showPenalties={showPenalties}
+                            showEmojis={showEmojis}
+                            emoji={team1Emoji}
                         />
                      )}
-                 </div> 
-                 <div className="flex-1 h-full"> 
+                 </div>
+                 <div className="flex-1 h-full">
                      {team2 && (
-                        <TeamDisplayPanel 
-                            team={team2} 
-                            showScore={showScore} // PASS PROP
-                            showPenalties={showPenalties} // PASS PROP
-                            showEmojis={showEmojis} // PASS PROP
-                            emoji={team2Emoji} // PASS PROP
+                        <TeamDisplayPanel
+                            team={team2}
+                            showScore={showScore}
+                            showPenalties={showPenalties}
+                            showEmojis={showEmojis}
+                            emoji={team2Emoji}
                         />
                      )}
                  </div>
                  {/* Logo Display (Absolute Center) */}
                  {state.logoUrl && (
                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex justify-center z-0">
-                         <img 
-                             src={state.logoUrl}  
-                             alt={t('scoreboardDisplay.logoAltText') ?? "Scoreboard Logo"}  
-                             className="max-h-72 max-w-full object-contain" 
-                             style={{ width: `${logoSize ?? 50}%` }} // Apply width based on state.logoSize
-                         /> 
-                     </div> 
-                 )} 
-             </div>
+                         <img
+                             src={state.logoUrl}
+                             alt={t('scoreboardDisplay.logoAltText') ?? "Scoreboard Logo"}
+                             className="max-h-72 max-w-full object-contain"
+                             style={{ width: ${logoSize ?? 50}% }}
+                         />
+                     </div>
+                 )}
+            </div>
 
             {/* Bottom Section: Footer */}
             <div className="w-full flex flex-col items-center pb-4">

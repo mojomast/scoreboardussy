@@ -23,7 +23,7 @@ export interface UpdateLogoSizePayload {
 }
 
 export interface UpdateVisibilityPayload {
-    target: 'score' | 'penalties' | 'emojis';
+    target: 'score' | 'penalties' | 'emojis' | 'timer';
     visible: boolean;
 }
 

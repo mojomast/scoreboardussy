@@ -23,7 +23,8 @@ const initialUiState = {
     showPenalties: true,
     showEmojis: true,
     team1Emoji: null as 'hand' | 'fist' | null,
-    team2Emoji: null as 'hand' | 'fist' | null
+    team2Emoji: null as 'hand' | 'fist' | null,
+    showTimer: false
 };
 
 // UI state management functions
@@ -70,6 +71,10 @@ export const updateVisibility = (payload: UpdateVisibilityPayload): void => {
             break;
         case 'emojis':
             updates.showEmojis = payload.visible;
+            break;
+        case 'timer':
+            // add a simple top-level flag showTimer on state
+            (updates as any).showTimer = payload.visible;
             break;
     }
 

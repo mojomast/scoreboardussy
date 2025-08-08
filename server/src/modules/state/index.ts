@@ -4,12 +4,14 @@ import { RoundConfig, RoundHistory, RoundSettings, RoundTemplate, RoundPlaylist 
 import { getInitialTeamState } from './team';
 import { getInitialUiState } from './ui';
 import { getInitialRoundState } from './rounds/state';
+import { getInitialTimerState } from './timer';
 
 // Global state instance
 // Fucking global state - single source of truth
 let state: ScoreboardState = {
     ...getInitialTeamState(),
     ...getInitialUiState(),
+    ...getInitialTimerState(),
     scoringMode: 'round',
     rounds: getInitialRoundState()
 };
@@ -342,3 +344,4 @@ export * from './rounds/state';
 export * from './rounds/actions';
 export * from './rounds/persistence';
 export * from './rounds/templates';
+export * from './timer';

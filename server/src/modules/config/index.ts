@@ -72,6 +72,17 @@ export const configureMiddleware = (app: Express) => {
     app.use(express.json()); // Middleware to parse JSON bodies
 };
 
+// Simple bearer token auth middleware factory for optional protection
+export const makeBearerAuth = (token?: string) => {
+    return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (!token) return next(); // disabled if no token provided
+        const header = req.headers['authorization'] || '';
+        const expected = `Bearer ${token}`;
+        if (header === expected) return next();
+        res.status(401).json({ error: 'Unauthorized' });
+    };
+};
+
 // Configure logging
 export const configureLogging = (isProduction: boolean = false) => {
     if (isProduction) {
