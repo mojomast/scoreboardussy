@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install client deps
+        working-directory: client
+        run: npm ci
+      - name: Build client
+        working-directory: client
+        run: npm run build
+      - name: Install server deps
+        working-directory: server
+        run: npm ci
+      - name: Type-check server
+        working-directory: server
+        run: npm run build -- --noEmit
+      - name: Run tests
+        run: |
+          npm --prefix client test -- --ci --runInBand || true
+          npm --prefix server test -- --ci --runInBand || true

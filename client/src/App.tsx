@@ -4,13 +4,14 @@ import { MantineProvider } from '@mantine/core';
 import { ScoreboardProvider } from './contexts/ScoreboardContext';
 import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
 import ScoreboardControl from './components/scoreboard/ScoreboardControl';
+import Home from './components/Home';
 
 // Import Mantine core styles
 import '@mantine/core/styles.css';
 
 function App() {
   const { t } = useTranslation();
-  const getHashView = () => window.location.hash || '#/display';
+const getHashView = () => window.location.hash || '#/home';
   const [view, setView] = useState<string>(getHashView());
 
   useEffect(() => {
@@ -23,7 +24,9 @@ function App() {
   return (
     <MantineProvider>
       <ScoreboardProvider>
-        {view === '#/display' ? (
+        {view === '#/home' ? (
+          <Home />
+        ) : view === '#/display' ? (
           <ScoreboardDisplay />
         ) : view === '#/control' ? (
           <ScoreboardControl />

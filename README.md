@@ -2,6 +2,8 @@
 
 Version 0.4.0
 
+[Version 0.5 Progress and Deployment Notes](version0.5.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
 [![React](https://img.shields.io/badge/Frontend-React-blue.svg)](https://reactjs.org/)  
@@ -182,6 +184,29 @@ scoreboardussy/
 - Server reorganized into modules: server/src/modules/{api,export,state} with server/src/types for events/payloads
 - Basic persistence added via server/data/scoreboard.json
 - New helper scripts for testing: test_all.ps1, test_api.ps1, test_websocket.ps1
+
+---
+
+## 🔐 Environment configuration (server)
+
+Create server/.env from server/.env.example. Important keys:
+- PORT: default 3001
+- NODE_ENV: production in production
+- PUBLIC_URL: e.g., https://yourdomain.com (used for generating links)
+- JWT_SECRET: set a strong secret in production
+- DATABASE_URL (M2+): Postgres connection string
+- REDIS_URL (M2+): Redis connection string
+
+To generate Prisma client after setting DATABASE_URL:
+- From server/: npx prisma generate
+- Run migrations (to be added in M2): npx prisma migrate deploy
+
+### Dev stack (Postgres + Redis)
+- docker compose -f docker-compose.dev.yml up -d
+- .env example values:
+  - DATABASE_URL=postgresql://app:example@localhost:5432/improvscoreboard?schema=public
+  - REDIS_URL=redis://localhost:6379
+- Then: from server/: npx prisma generate
 
 ---
 

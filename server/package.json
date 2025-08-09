@@ -14,8 +14,10 @@
     "@types/uuid": "^10.0.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
     "socket.io": "^4.7.5",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "@socket.io/redis-adapter": "^8.2.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -28,7 +30,10 @@
     "ts-jest": "^29.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
-    "pkg": "^5.8.1"
+    "pkg": "^5.8.1",
+    "prisma": "^5.16.2",
+    "@prisma/client": "^5.16.2",
+    "ioredis": "^5.4.1"
   },
   "author": "Cascade",
   "license": "MIT"

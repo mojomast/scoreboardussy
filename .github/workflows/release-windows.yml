@@ -1,0 +1,27 @@
+name: Release Windows Portable
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Build portable zip (no Inno Setup required)
+        shell: powershell
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File installer/windows/build-windows-installer.ps1 -Version $env:GITHUB_REF_NAME
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/windows/artifacts/ImprovScoreboard_Portable_${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

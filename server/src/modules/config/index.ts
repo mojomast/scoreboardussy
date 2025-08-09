@@ -3,22 +3,36 @@ import cors, { CorsOptions } from 'cors';
 import path from 'path';
 import fs from 'fs';
 
-// Define allowed origins for CORS
+// Define allowed origins for CORS (augmented by env in production)
 const allowedOrigins = [
     'http://localhost:5173', // Vite dev server
     'http://127.0.0.1:5173',
-    // Add production frontend URL here later
-    // e.g., 'https://your-scoreboard-app.com'
 ];
+
+const publicUrl = process.env.PUBLIC_URL ? process.env.PUBLIC_URL.replace(/\/$/, '') : undefined;
+if (publicUrl) {
+    allowedOrigins.push(publicUrl);
+}
+const explicitOrigin = process.env.ORIGIN ? process.env.ORIGIN.replace(/\/$/, '') : undefined;
+if (explicitOrigin && !allowedOrigins.includes(explicitOrigin)) {
+    allowedOrigins.push(explicitOrigin);
+}
 
 // CORS configuration
 export const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        // In production or packaged mode, allow all origins (server serves the client and LAN access is desired)
-        if (process.env.NODE_ENV === 'production' || (process as any).pkg) {
+        // In packaged mode (single EXE), allow all origins for LAN access
+        if ((process as any).pkg) {
             return callback(null, true);
+        }
+        // In production server mode, restrict to configured origins if provided
+        if (process.env.NODE_ENV === 'production' && (publicUrl || explicitOrigin)) {
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+            console.error(msg);
+            return callback(new Error(msg), false);
         }
         // In development, restrict to known dev origins
         if (allowedOrigins.indexOf(origin) === -1) {

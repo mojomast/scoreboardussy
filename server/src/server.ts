@@ -17,6 +17,9 @@ import {
 } from './modules/config';
 import { initializeSocketHandlers } from './modules/socket/handlers';
 import apiRoutes from './modules/api/routes';
+import roomRoutes from './modules/rooms/routes';
+import { verifyRoomToken } from './modules/auth/tokens';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { loadPersistedState } from './modules/state';
 
 // Create Express app and HTTP server
@@ -37,12 +40,47 @@ const io = new Server<
 configureMiddleware(app);
 
 // Mount API routes
+app.use('/api/rooms', roomRoutes);
 app.use('/api', apiRoutes);
 
 // Configure static file serving and environment
 const isProd = isProduction();
 configureStaticServing(app, isProd);
 configureLogging(isProd);
+
+// Optional Socket.IO Redis adapter (M2 scaffolding)
+(async () => {
+    try {
+        const redisUrl = process.env.REDIS_URL;
+        if (redisUrl) {
+            const { default: Redis } = await import('ioredis');
+            const pubClient = new Redis(redisUrl);
+            const subClient = pubClient.duplicate();
+            io.adapter(createAdapter(pubClient as any, subClient as any));
+            console.log('Socket.IO Redis adapter enabled');
+        }
+    } catch (e) {
+        console.warn('Socket.IO Redis adapter not enabled:', e);
+    }
+})();
+
+// Socket auth middleware (M1): accept optional token and join room channel
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers['x-room-token'];
+    if (typeof token === 'string') {
+        const payload = verifyRoomToken(token);
+        if (payload) {
+            socket.data = { ...(socket.data || {}), roomId: payload.roomId, role: payload.role } as any;
+            // Join a Socket.IO room for later room-scoped broadcasts
+            socket.join(`room:${payload.roomId}`);
+            return next();
+        } else {
+            console.warn(`Socket auth token invalid for ${socket.id}, continuing as guest`);
+        }
+    }
+    // Backward-compatible: allow connection without token
+    return next();
+});
 
 // Import template initialization function
 import { initializeDefaultTemplates } from './modules/state/rounds/templates';
