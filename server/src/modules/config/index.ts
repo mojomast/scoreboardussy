@@ -1,6 +1,7 @@
 import express, { Express } from 'express';
 import cors, { CorsOptions } from 'cors';
 import path from 'path';
+import fs from 'fs';
 
 // Define allowed origins for CORS
 const allowedOrigins = [
@@ -15,6 +16,11 @@ export const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
+        // In production or packaged mode, allow all origins (server serves the client and LAN access is desired)
+        if (process.env.NODE_ENV === 'production' || (process as any).pkg) {
+            return callback(null, true);
+        }
+        // In development, restrict to known dev origins
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
             console.error(msg);
@@ -29,11 +35,19 @@ export const corsOptions: CorsOptions = {
 // Configure static file serving for production
 export const configureStaticServing = (app: Express, isProduction: boolean = false) => {
     if (isProduction) {
-        // Resolve the client build path based on the server's working directory.
-        // We assume the server process runs with CWD = server/ (package.json lives here).
-        // The client build is at ../client/dist relative to server/.
-        const serverCwd = process.cwd();
-        const clientBuildPath = path.resolve(serverCwd, '..', 'client', 'dist');
+        // Determine base directory depending on whether we're running as a packaged binary (pkg) or Node
+        const isPackaged = (process as any).pkg !== undefined;
+        const baseDir = isPackaged
+            ? path.dirname(process.execPath) // directory containing the packaged exe
+            : process.cwd(); // server working directory during normal Node runs
+
+        // Candidate locations for client/dist relative to the server directory
+        const candidates = [
+            path.resolve(baseDir, '..', 'client', 'dist'), // sibling client/dist (typical layout)
+            path.resolve(baseDir, 'client', 'dist'),        // nested client/dist
+        ];
+
+        const clientBuildPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
         console.log(`Serving static files from: ${clientBuildPath}`);
 
         // Serve static files from the React app build directory
@@ -47,7 +61,6 @@ export const configureStaticServing = (app: Express, isProduction: boolean = fal
             res.sendFile(indexPath, (err) => {
                 if (err) {
                     console.error('Error sending index.html:', err);
-                    // If file not found, maybe log and send a generic 404?
                     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
                         res.status(404).send('Resource not found');
                     } else {
@@ -85,5 +98,5 @@ export const configureLogging = (isProduction: boolean = false) => {
 };
 
 // Export server environment helper
-export const isProduction = (): boolean => process.env.NODE_ENV === 'production';
+export const isProduction = (): boolean => process.env.NODE_ENV === 'production' || (process as any).pkg !== undefined;
 

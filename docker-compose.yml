@@ -1,0 +1,17 @@
+services:
+  improvscoreboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: improvscoreboard
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - scoreboard_data:/app/server/data
+    restart: unless-stopped
+
+volumes:
+  scoreboard_data:

@@ -1,0 +1,20 @@
+# General
+.git
+.gitignore
+README.md
+LICENSE
+**/node_modules
+**/dist
+**/.cache
+**/.vite
+**/coverage
+
+# OS/files
+.DS_Store
+Thumbs.db
+
+# Logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
