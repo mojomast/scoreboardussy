@@ -207,6 +207,37 @@ const ScoreboardControl: React.FC = () => {
                 />
             </Box>
 
+            {/* Mon-Pacing Integration */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">Mon-Pacing</Title>
+                <Group justify="space-between" align="center">
+                    <Text size="sm" c="dimmed">Enable integration overlay (QR) on display</Text>
+                    <Switch
+                        checked={(() => { try { return localStorage.getItem('enableMonPacingIntegration') === 'true'; } catch { return false; } })()}
+                        onChange={(e) => { try { localStorage.setItem('enableMonPacingIntegration', String(e.currentTarget.checked)); } catch {} }}
+                        size="sm"
+                    />
+                </Group>
+                <Text size="xs" c="dimmed" mt={6}>When enabled, the display view will show a QR containing {`{ url, id, token }`} for Mon-Pacing.</Text>
+                <Group mt="sm">
+                    <SegmentedControl
+                        data={[
+                            { label: 'Bottom-Left', value: 'bottom-left' },
+                            { label: 'Bottom-Right', value: 'bottom-right' },
+                            { label: 'Top-Left', value: 'top-left' },
+                            { label: 'Top-Right', value: 'top-right' },
+                        ]}
+                        value={(() => { try { return localStorage.getItem('monPacing.corner') || 'bottom-left'; } catch { return 'bottom-left'; } })()}
+                        onChange={(val) => { try { localStorage.setItem('monPacing.corner', val); } catch {} }}
+                        size="xs"
+                        fullWidth
+                    />
+                    <Button size="xs" variant="light" color="red" onClick={() => { try { localStorage.removeItem('monPacing.qrPayload'); localStorage.removeItem('monPacing.matchId'); } catch {} }}>
+                        Regenerate QR/ID
+                    </Button>
+                </Group>
+            </Paper>
+
             {/* Logo Management */}
             <Paper shadow="xs" p="md">
                 <Title order={4} mb="sm">{logoManagementTitleText}</Title>

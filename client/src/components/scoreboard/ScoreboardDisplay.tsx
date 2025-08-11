@@ -150,7 +150,9 @@ const ScoreboardDisplay: React.FC = () => {
 
             {/* Team Panels Container (Should fill remaining space) */} 
             {/* Ensure this container and its children fill the height */} 
-            <div className="relative flex-1 flex flex-row w-full"> 
+      <div className="relative flex-1 flex flex-row w-full">
+        {/* Mon-Pacing QR Overlay (appears when enabled via Control setting) */}
+        <MonPacingOverlay corner="bottom-left" />
                  {/* Wrap each panel in a div that grows and fills height */} 
                  <div className="flex-1 h-full"> 
                      {team1 && (
@@ -206,5 +208,7 @@ const ScoreboardDisplay: React.FC = () => {
         </div>
     );
 };
+
+import MonPacingOverlay from '../integrations/MonPacingOverlay';
 
 export default ScoreboardDisplay;
