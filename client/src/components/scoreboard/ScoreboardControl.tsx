@@ -514,6 +514,7 @@ const ScoreboardControl: React.FC = () => {
                                         key={i18n.language + '-team1'}
                                         teamId="team1"
                                         team={team1}
+                                        showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'}
                                     />
                                 )}
                                 {team2 && (
@@ -521,14 +522,17 @@ const ScoreboardControl: React.FC = () => {
                                         key={i18n.language + '-team2'}
                                         teamId="team2"
                                         team={team2}
+                                        showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'}
                                     />
                                 )}
                             </SimpleGrid>
-                            <Paper shadow="xs" p="md">
-                                <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>
-                                <RoundControls />
-                                <CurrentRound />
-                            </Paper>
+                                {(state?.scoringMode as 'round' | 'manual') === 'round' && (
+                                    <Paper shadow="xs" p="md">
+                                        <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>
+                                        <RoundControls />
+                                        <CurrentRound />
+                                    </Paper>
+                                )}
                         </Stack>
                     </Tabs.Panel>
 
@@ -549,13 +553,13 @@ const ScoreboardControl: React.FC = () => {
                             </Tabs.List>
                             <Tabs.Panel value="teams" pt="xs">
                                 <Stack gap="lg">
-                                    <SimpleGrid cols={2} spacing="lg">
-                                        {team1 && (
-                                            <TeamControlPanel key={i18n.language + '-team1'} teamId="team1" team={team1} />
-                                        )}
-                                        {team2 && (
-                                            <TeamControlPanel key={i18n.language + '-team2'} teamId="team2" team={team2} />
-                                        )}
+                            <SimpleGrid cols={2} spacing="lg">
+                                {team1 && (
+                                    <TeamControlPanel key={i18n.language + '-team1'} teamId="team1" team={team1} showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'} />
+                                )}
+                                {team2 && (
+                                    <TeamControlPanel key={i18n.language + '-team2'} teamId="team2" team={team2} showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'} />
+                                )}
                                     </SimpleGrid>
                                     <Paper shadow="xs" p="md">
                                         <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>
