@@ -11,7 +11,12 @@ import '@mantine/core/styles.css';
 
 function App() {
   const { t } = useTranslation();
-const getHashView = () => window.location.hash || '#/home';
+  const getHashView = () => {
+    const raw = window.location.hash || '#/home';
+    // Strip any query string from the hash so "#/control?room=..." matches "#/control"
+    const path = raw.split('?')[0] || '#/home';
+    return path;
+  };
   const [view, setView] = useState<string>(getHashView());
 
   useEffect(() => {
