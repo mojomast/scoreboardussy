@@ -1,4 +1,4 @@
-# Scoreboardussy 0.5.2-beta
+# Scoreboardussy 0.5.4-beta
 
 This is a 0.5-beta snapshot capturing the current progress on real-time match features and Mon-Pacing integration.
 
@@ -59,6 +59,14 @@ This point release aligns our interop endpoints with the latest Mon-Pacing clien
 
 ## How to Use (Beta)
 
+### Option A: Standalone Launcher (Windows)
+- Download the release zip for 0.5.4-beta
+- Extract and run Start-Scoreboard.ps1 (right-click → Run with PowerShell)
+  - It auto-detects your LAN IP, starts the server EXE, and opens Control UI
+  - Optional params: -Ip 192.168.1.68 -Port 3001 -NoBrowser
+
+### Option B: Dev/Server mode
+
 1) Server flags (optional but recommended)
 - ENABLE_REALTIME_MATCHES=true
 - ENABLE_MATCH_TIMERS=true
@@ -113,6 +121,11 @@ This point release aligns our interop endpoints with the latest Mon-Pacing clien
 - No per-room auth enforcement beyond token-based join; consider roles/scopes if needed
 
 ## Changelog
+
+### 0.5.4-beta
+- Standalone Windows launcher: packaged server EXE plus client assets with Start-Scoreboard.ps1
+- Production start script now auto-detects LAN IP, sets PUBLIC_URL, allows localhost origin, and opens Control UI
+- Documentation updates: standalone instructions and LAN hosting guidance
 
 ### 0.5.2-beta
 - Interop alignment: Mon-Pacing now posts to /match and /timer; server endpoints implemented and documented

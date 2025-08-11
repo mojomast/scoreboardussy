@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Box, Button, CopyButton, Group, Loader, Paper, SegmentedControl, Text, Title, Tooltip } from '@mantine/core';
+import React, { useEffect, useState } from 'react';
+import { Box, Button, CopyButton, Group, Loader, Paper, Text, Title } from '@mantine/core';
 
 interface MonPacingQRPayload {
   url: string;
@@ -64,7 +64,7 @@ function loadCorner(): 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 export const MonPacingOverlay: React.FC<{ corner?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }>
   = ({ corner = loadCorner() }) => {
-  const [enabled, setEnabled] = useState<boolean>(loadEnabled());
+  const [enabled] = useState<boolean>(loadEnabled());
   const [payload, setPayload] = useState<MonPacingQRPayload | null>(loadCachedQR());
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
