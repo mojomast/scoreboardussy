@@ -23,6 +23,7 @@ import {
     SimpleGrid,
     Switch
 } from '@mantine/core';
+import { MonPacingOverlay } from '../integrations/MonPacingOverlay';
 // Removed unused server type imports
 
 /**
@@ -193,6 +194,23 @@ const ScoreboardControl: React.FC = () => {
     // Extract Settings into reusable panel for docking or tab usage
     const SettingsPanel: React.FC = () => (
         <Stack gap="xl">
+            {/* Voting Controls */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">Audience Voting</Title>
+                <Group gap="sm">
+                    <Button onClick={async () => { await fetch('/api/voting/start', { method: 'POST' }); window.location.hash = '#/display'; }}>
+                        Start Vote (show QR)
+                    </Button>
+                    <Button color="green" onClick={async () => { await fetch('/api/voting/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoAward: true }) }); }}>
+                        End Vote + Auto-Award
+                    </Button>
+                    <Button color="gray" onClick={async () => { await fetch('/api/voting/end', { method: 'POST' }); }}>
+                        End Vote (no award)
+                    </Button>
+                </Group>
+                <Text size="xs" c="dimmed" mt="xs">Start shows a QR on the display so spectators can vote. End will compute the winner and, if chosen, add a point automatically.</Text>
+            </Paper>
+
             {/* Language Selector */}
             <Box>
                 <Text size="sm" fw={500} mb={4}>{t('scoreboardControl.languageSelectLabel')}</Text>
@@ -236,6 +254,15 @@ const ScoreboardControl: React.FC = () => {
                         Regenerate QR/ID
                     </Button>
                 </Group>
+            </Paper>
+
+            {/* Mon-Pacing QR Preview (shown in Control panel) */}
+            <Paper shadow="xs" p="md">
+                <Title order={5} mb="sm">Mon-Pacing QR (Preview)</Title>
+                <Box style={{ position: 'relative', minHeight: 160 }}>
+                    <MonPacingOverlay corner={'top-left'} />
+                </Box>
+                <Text size="xs" c="dimmed" mt={6}>This QR is shown here for convenience and will no longer display on the scoreboard.</Text>
             </Paper>
 
             {/* Logo Management */}
