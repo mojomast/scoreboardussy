@@ -1,8 +1,8 @@
 # Scoreboardussy 🏆
 
-Version 0.4.0
+Version 0.5.4-beta
 
-[Version 0.5 Progress and Deployment Notes](version0.5.md)
+[0.5-beta Release Notes and Deployment](README-0.5beta.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
@@ -16,6 +16,12 @@ Version 0.4.0
 ---
 
 ## ✨ Features
+
+0.5-beta highlights
+- Mon-Pacing integration with QR-based linking and interop endpoints (/qr, /match, /timer)
+- Real-time match timers with server-authoritative updates (100ms)
+- LAN-friendly startup scripts and a Windows standalone launcher
+- Control UI toggle for showing the Mon-Pacing QR overlay on the display
 
 - Real-time updates via WebSockets (Socket.IO)
 - Separate control panel and display views
@@ -72,6 +78,15 @@ Then open:
 ---
 
 ### 2. Deploying on a Local Network
+
+Standalone (Windows)
+- Download the latest 0.5.4-beta release assets: ImprovScoreboard.exe and Start-Scoreboard.ps1
+- Keep both files together, then run Start-Scoreboard.ps1 (right-click → Run with PowerShell)
+  - Auto-detects your LAN IP and starts the server bound to it
+  - Opens Control UI in your browser
+  - Optional params: -Ip 192.168.1.68 -Port 3001 -NoBrowser
+
+Manual (Node production)
 
 Use this mode to run the scoreboard from one computer and access it from other devices on the same Wi-Fi or Ethernet network.
 
@@ -167,7 +182,14 @@ scoreboardussy/
 
 </details>
 
-### 🧰 What Changed
+### 🧰 What Changed (0.5-beta)
+
+- Mon-Pacing interop: QR overlay, /api/interop/mon-pacing/qr → { url, id, token }, and endpoints /match, /timer (legacy /event kept)
+- Server serves client/dist in production and binds to 0.0.0.0 for LAN access
+- New Windows standalone launcher (ImprovScoreboard.exe + Start-Scoreboard.ps1)
+- LAN-aware production start script (scripts/start-server-prod.ps1) with auto-open browser
+- Real-time match scaffolding (state manager, timers, socket handlers)
+- Design docs and Referee Quickstart for setup and usage
 
 - New dockable Settings panel with toggle in header; can view Settings side-by-side with Teams/Rounds
 - Modular Settings includes Scoring Mode (Round/Manual) and Restart Match, and excludes lifecycle controls
