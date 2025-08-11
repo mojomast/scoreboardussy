@@ -1,15 +1,15 @@
-# Scoreboardussy 0.5.1-beta
+# Scoreboardussy 0.5.2-beta
 
 This is a 0.5-beta snapshot capturing the current progress on real-time match features and Mon-Pacing integration.
 
 Date: 2025-08-11
 
-This is a point release focusing on LAN-friendly startup scripts, Mon-Pacing QR fixes, and layout corrections.
+This point release aligns our interop endpoints with the latest Mon-Pacing client branch: match pushes now use /match and timer updates use /timer. Also includes LAN-friendly startup scripts, QR overlay fixes, and layout corrections.
 
 ## TL;DR
 - New real-time match server scaffolding (MatchStateManager) with server-authoritative timers (100ms ticks)
 - Socket.IO events extended for match control and timer updates
-- Mon-Pacing interop endpoints: /api/interop/mon-pacing/qr, /plan, /event, /test
+- Mon-Pacing interop endpoints: /api/interop/mon-pacing/qr, /match, /timer, /test (legacy /event remains for compatibility)
 - LAN startup scripts for Windows (PowerShell) to bind server and client to your local IP
 - Client overlay now auto-targets server at port 3001 using client hostname
 - Tailwind CSS ensured to load (fixes side-by-side team layout)
@@ -33,11 +33,13 @@ This is a point release focusing on LAN-friendly startup scripts, Mon-Pacing QR 
   - server/src/modules/socket/handlers.ts
   - Handlers added for all real-time match operations (feature-gated via ENABLE_REALTIME_MATCHES, ENABLE_MATCH_TIMERS)
 - Interop tokens and API
-  - server/src/modules/auth/tokens.ts: signInteropToken/verifyInteropToken ({ matchId, scope: 'monpacing' })
-  - server/src/modules/api/interop/monpacing.ts:
-    - POST /api/interop/mon-pacing/qr → { url, id, token }
-    - POST /api/interop/mon-pacing/plan (Bearer) → initializes/loads match and maps teams
-    - POST /api/interop/mon-pacing/event (Bearer) → routes timer/points/penalty events
+- server/src/modules/auth/tokens.ts: signInteropToken/verifyInteropToken ({ matchId, scope: 'monpacing' })
+- server/src/modules/api/interop/monpacing.ts:
+  - POST /api/interop/mon-pacing/qr → { url, id, token }
+  - POST /api/interop/mon-pacing/match (Bearer) → receives full match payload { version, matchId, match }
+  - POST /api/interop/mon-pacing/timer (Bearer) → receives timer status { version, matchId, status, totalDuration?, remainingDuration? }
+  - POST /api/interop/mon-pacing/event (Bearer) → kept for legacy 'points'/'penalty' and older timer payloads
+  - POST /api/interop/mon-pacing/test (Bearer) → token validation helper
 
 ### Client
 - Mon-Pacing QR overlay
@@ -75,7 +77,7 @@ This is a point release focusing on LAN-friendly startup scripts, Mon-Pacing QR 
 
 4) Open Display view (#/display)
 - QR appears in the bottom-left corner
-- Scan with Mon-Pacing; it will call /plan and /event
+- Scan with Mon-Pacing; it will call /match and /timer (token in Authorization: Bearer ...)
 
 ## Compatibility
 - Existing scoreboard features remain intact; new features are modular and opt-in
@@ -106,11 +108,16 @@ This is a point release focusing on LAN-friendly startup scripts, Mon-Pacing QR 
 - Add user guide for referees (how to link and run a match)
 
 ## Known Limitations (in this beta)
-- MatchStateManager now honors provided matchId from QR during /plan; existing matches remain in-memory only
+- MatchStateManager honors QR-provided matchId; matches remain in-memory only (no persistence yet)
 - Timer precision depends on Node event loop; adequate for 100ms UI updates, but not hard real-time
 - No per-room auth enforcement beyond token-based join; consider roles/scopes if needed
 
 ## Changelog
+
+### 0.5.2-beta
+- Interop alignment: Mon-Pacing now posts to /match and /timer; server endpoints implemented and documented
+- Usage docs updated (Display overlay + Control toggle)
+- Keep legacy /event for compatibility with older client payloads
 
 ### 0.5.1-beta
 - Scripts: start-server.ps1 and start-client.ps1 for LAN hosting; server sets PUBLIC_URL/ORIGIN; client passes --host/--port.
