@@ -1,10 +1,10 @@
-# Scoreboardussy 0.5.4-beta
+# Scoreboardussy 0.5.5-beta
 
 This is a 0.5-beta snapshot capturing the current progress on real-time match features and Mon-Pacing integration.
 
 Date: 2025-08-11
 
-This point release aligns our interop endpoints with the latest Mon-Pacing client branch: match pushes now use /match and timer updates use /timer. Also includes LAN-friendly startup scripts, QR overlay fixes, and layout corrections.
+This point release includes a simple Rooms API and a Home page “Recent Rooms” list to make it easier to join existing rooms while longer-term room persistence is being finalized. Also reiterates deployment notes for Kubernetes regarding PUBLIC_URL, single-replica state, and ingress pathing.
 
 ## TL;DR
 - New real-time match server scaffolding (MatchStateManager) with server-authoritative timers (100ms ticks)
@@ -122,10 +122,16 @@ This point release aligns our interop endpoints with the latest Mon-Pacing clien
 
 ## Changelog
 
+### 0.5.5-beta
+- Server: expose GET /api/rooms and POST /api/rooms (temporary in-memory storage)
+- Client Home: fetch and render “Recent Rooms”, with quick links to Control and Display
+- Docs: Kubernetes deployment notes around PUBLIC_URL, single replica for in-memory rooms, and ingress path rewrites
+
 ### 0.5.4-beta
 - Standalone Windows launcher: packaged server EXE plus client assets with Start-Scoreboard.ps1
 - Production start script now auto-detects LAN IP, sets PUBLIC_URL, allows localhost origin, and opens Control UI
 - Documentation updates: standalone instructions and LAN hosting guidance
+- New experimental Audience Voting API under /api/voting (enable/start/vote/end/state); optional auto-award to winner
 
 ### 0.5.2-beta
 - Interop alignment: Mon-Pacing now posts to /match and /timer; server endpoints implemented and documented
