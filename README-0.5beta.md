@@ -1,4 +1,4 @@
-# Scoreboardussy 0.5.5-beta
+# Scoreboardussy 0.5.6-beta
 
 This is a 0.5-beta snapshot capturing the current progress on real-time match features and Mon-Pacing integration.
 
@@ -122,8 +122,9 @@ This point release includes a simple Rooms API and a Home page “Recent Rooms�
 
 ## Changelog
 
-### 0.5.5-beta
+### 0.5.6-beta
 - Server: expose GET /api/rooms and POST /api/rooms (temporary in-memory storage)
+- Server: GET /api/rooms now includes team color fields; Home also merges live colors/scores from GET /api/state so list reflects current team colors
 - Client Home: fetch and render “Recent Rooms”, with quick links to Control and Display
 - Docs: Kubernetes deployment notes around PUBLIC_URL, single replica for in-memory rooms, and ingress path rewrites
 

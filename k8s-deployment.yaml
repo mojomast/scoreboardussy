@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: improvscoreboard
+  labels:
+    app: improvscoreboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: improvscoreboard
+  template:
+    metadata:
+      labels:
+        app: improvscoreboard
+    spec:
+      imagePullSecrets:
+      - name: ghcr-login-secret
+      containers:
+      - name: improvscoreboard
+        image: ghcr.io/mojomast/improvscoreboard:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3001
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3001"
+        - name: PUBLIC_URL
+          value: "http://162.209.114.30"
+        volumeMounts:
+        - name: scoreboard-data
+          mountPath: /app/server/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: scoreboard-data
+        persistentVolumeClaim:
+          claimName: scoreboard-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: improvscoreboard-service
+  labels:
+    app: improvscoreboard
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3001
+    protocol: TCP
+    name: http
+  selector:
+    app: improvscoreboard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scoreboard-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

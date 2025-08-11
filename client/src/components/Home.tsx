@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-type Room = { id: string; createdAt: string; team1Name?: string; team2Name?: string; team1Score?: number; team2Score?: number };
+type Room = { id: string; createdAt: string; team1Name?: string; team2Name?: string; team1Color?: string; team2Color?: string; team1Score?: number; team2Score?: number };
 
 const Home: React.FC = () => {
   const [busy, setBusy] = useState(false);
@@ -11,10 +11,26 @@ const Home: React.FC = () => {
   async function refreshRooms() {
     try {
       setLoadingRooms(true);
-      const res = await fetch('/api/rooms');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setRooms(Array.isArray(data.rooms) ? data.rooms : []);
+      const [roomsRes, stateRes] = await Promise.all([
+        fetch('/api/rooms'),
+        fetch('/api/state')
+      ]);
+      if (!roomsRes.ok) throw new Error(`HTTP ${roomsRes.status}`);
+      const data = await roomsRes.json();
+      let liveColors: { team1Color?: string; team2Color?: string; team1Score?: number; team2Score?: number } = {};
+      if (stateRes.ok) {
+        try {
+          const s = await stateRes.json();
+          liveColors = {
+            team1Color: s?.team1?.color,
+            team2Color: s?.team2?.color,
+            team1Score: typeof s?.team1?.score === 'number' ? s.team1.score : undefined,
+            team2Score: typeof s?.team2?.score === 'number' ? s.team2.score : undefined,
+          };
+        } catch {}
+      }
+      const list = Array.isArray(data.rooms) ? data.rooms.map((r: any) => ({ ...r, ...liveColors })) : [];
+      setRooms(list);
     } catch (e: any) {
       setError(e?.message || 'Failed to load rooms');
     } finally {
@@ -86,9 +102,9 @@ const Home: React.FC = () => {
                   <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
                   {(r.team1Name || r.team2Name) && (
                     <div className="text-sm mt-1">
-                      <span className="font-medium">{r.team1Name || 'Team 1'}</span> {typeof r.team1Score === 'number' ? r.team1Score : '-'}
+                      <span className="font-medium" style={{ color: r.team1Color || undefined }}>{r.team1Name || 'Team 1'}</span> {typeof r.team1Score === 'number' ? r.team1Score : '-'}
                       <span className="mx-2">vs</span>
-                      <span className="font-medium">{r.team2Name || 'Team 2'}</span> {typeof r.team2Score === 'number' ? r.team2Score : '-'}
+                      <span className="font-medium" style={{ color: r.team2Color || undefined }}>{r.team2Name || 'Team 2'}</span> {typeof r.team2Score === 'number' ? r.team2Score : '-'}
                     </div>
                   )}
                 </div>

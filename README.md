@@ -1,6 +1,6 @@
 # Scoreboardussy 🏆
 
-Version 0.5.4-beta
+Version 0.5.6-beta
 
 [0.5-beta Release Notes and Deployment](README-0.5beta.md)
 
@@ -28,6 +28,7 @@ Version 0.5.4-beta
 - Customizable teams, titles, and colors
 - Logo upload
 - Major/minor penalty tracking
+- Audience voting (start/stop votes, cast via API; optional auto-award to winner)
 - Crowd voting emoji display
 - English and French support
 - Fullscreen and responsive design (Tailwind CSS)
@@ -229,6 +230,31 @@ To generate Prisma client after setting DATABASE_URL:
   - DATABASE_URL=postgresql://app:example@localhost:5432/improvscoreboard?schema=public
   - REDIS_URL=redis://localhost:6379
 - Then: from server/: npx prisma generate
+
+---
+
+## 🗳️ Audience Voting (experimental)
+
+The server exposes simple endpoints to run audience votes between Team 1 and Team 2.
+
+- Enable/disable voting globally
+  - POST /api/voting/enable { "enabled": boolean }
+- Start a voting session
+  - POST /api/voting/start { "matchId"?: string }
+- Cast a vote for a team (while active)
+  - POST /api/voting/vote/team1
+  - POST /api/voting/vote/team2
+- End the voting session, optionally auto-award a point to the winner
+  - POST /api/voting/end { "matchId"?: string, "autoAward"?: boolean }
+- Get current voting state
+  - GET /api/voting/state
+
+Notes
+- Votes are kept in-memory; they reset each time you start a session.
+- If autoAward=true when ending and there is a winner, the server increments that team’s score.
+- You can surface a QR or short link to your audience that hits the vote endpoints from phones (implementation up to you).
+
+For detailed request/response examples, see docs/Voting.md.
 
 ---
 
