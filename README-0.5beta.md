@@ -104,8 +104,8 @@ This point release aligns our interop endpoints with the latest Mon-Pacing clien
 - Performance tests with many connected displays and multiple concurrent matches
 
 ### Documentation
-- Expand REALTIME_MATCH_INTEGRATION_DESIGN.md with specific payload examples from Mon-Pacing
-- Add user guide for referees (how to link and run a match)
+- Expand REALTIME_MATCH_INTEGRATION_DESIGN.md with specific payload examples from Mon-Pacing (UPDATED)
+- Add user guide for referees (how to link and run a match) → see docs/Referee-Quickstart.md (NEW)
 
 ## Known Limitations (in this beta)
 - MatchStateManager honors QR-provided matchId; matches remain in-memory only (no persistence yet)

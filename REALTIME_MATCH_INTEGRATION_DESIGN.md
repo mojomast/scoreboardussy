@@ -490,21 +490,32 @@ socket.on('updateMatchScore', (payload) => {
 - Base path: /api/interop/mon-pacing
 - Token: Bearer JWT with payload { matchId, scope: 'monpacing' }
 
-Endpoints
+Endpoints (current)
 - POST /qr
   - Body: { matchId?: string, baseUrl?: string }
   - Response: { url: string, id: string, token: string }
   - Notes: id is the matchId used by mon-pacing; token is bound to that id.
-- POST /plan
+- POST /match
   - Headers: Authorization: Bearer <token>
   - Body: {
       version: 1,
       matchId: string,
-      teams: [{ id: 'A'|'B', name: string, color?: string }, ...],
-      rounds: Array<{ id: string, order: number, category?: string, theme?: string, minutes?: number, seconds?: number, type?: string, mixed?: boolean }>
+      match: { /* full match data (teams, settings, etc.) */ }
     }
-  - Behavior: creates or loads match and maps team names/colors. Rounds can be mapped to planning subsystem later.
-- POST /event
+  - Behavior: creates or loads the match and maps provided fields (e.g., team names/colors) into the scoreboard state.
+- POST /timer
+  - Headers: Authorization: Bearer <token>
+  - Body: {
+      version: 1,
+      matchId: string,
+      status: 'start'|'pause'|'stop',
+      totalDuration?: number,        // seconds
+      remainingDuration?: number     // seconds
+    }
+  - Behavior: routes to server-side timer handlers for the specified match (start/pause/stop and set duration when applicable).
+
+Legacy compatibility
+- POST /event (legacy)
   - Headers: Authorization: Bearer <token>
   - Body: {
       version: 1, matchId: string,
@@ -514,11 +525,59 @@ Endpoints
   - Timer payloads: { action: 'start'|'pause'|'resume'|'stop'|'set', durationSec?: number }
   - Points payloads: { team: 'A'|'B', points: number }
   - Penalty payloads: { team: 'A'|'B', kind: string }
-  - Behavior: routes to server-side match/timer handlers and broadcasts to match:{matchId}
+  - Behavior: accepted for backward compatibility; new clients should prefer /match and /timer.
 
 Security
 - Tokens are short-lived JWTs signed with server secret, scoped to the matchId and interop scope.
 - All interop endpoints require Authorization except /qr.
+
+Examples
+- POST /qr
+```bash
+curl -s -X POST "http://<server-host>:3001/api/interop/mon-pacing/qr" \
+  -H "Content-Type: application/json" \
+  -d '{"baseUrl":"http://<server-host>:3001"}'
+# => { "url": "http://<server-host>:3001/api/interop/mon-pacing", "id": "match_abcd1234", "token": "<JWT>" }
+```
+
+- POST /match
+```bash
+BASE="http://<server-host>:3001/api/interop/mon-pacing"
+TOKEN="<JWT>"
+ID="match_abcd1234"
+curl -s -X POST "$BASE/match" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version":1,
+    "matchId":"'"$ID"'",
+    "match":{
+      "teams":[{"name":"Team A","color":"#ff3333"},{"name":"Team B","color":"#3333ff"}],
+      "settings":{}
+    }
+  }'
+```
+
+- POST /timer
+```bash
+BASE="http://<server-host>:3001/api/interop/mon-pacing"
+TOKEN="<JWT>"
+ID="match_abcd1234"
+# Start a 120s timer (remainingDuration preferred if provided)
+curl -s -X POST "$BASE/timer" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version":1,
+    "matchId":"'"$ID"'",
+    "status":"start",
+    "totalDuration":120
+  }'
+# Pause
+curl -s -X POST "$BASE/timer" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"version":1,"matchId":"'"$ID"'","status":"pause"}'
+# Stop
+curl -s -X POST "$BASE/timer" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"version":1,"matchId":"'"$ID"'","status":"stop"}'
+```
 
 ---
 
