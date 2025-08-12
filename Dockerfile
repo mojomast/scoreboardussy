@@ -6,7 +6,10 @@ WORKDIR /app/client
 # Install dependencies
 COPY client/package*.json ./
 RUN npm ci
-# Copy source and build
+# Copy server types into expected relative path for client build alias
+RUN mkdir -p /app/server/src/types
+COPY server/src/types /app/server/src/types
+# Copy client source and build
 COPY client/ .
 RUN npm run build
 

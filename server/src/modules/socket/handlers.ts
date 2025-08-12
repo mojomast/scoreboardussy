@@ -43,16 +43,21 @@ import {
     nextInPlaylist,
     previousInPlaylist
 } from '../state';
+import { matchStateManager } from '../state/matches';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-
-// Broadcast state to all connected clients
-const broadcastState = (io: IoServer) => {
+// Broadcast state to all connected clients (M1: global)
+// TODO(M2): room-scoped broadcasting using socket rooms and per-room state
+const broadcastState = (io: IoServer, roomId?: string) => {
     const currentState = getState();
     console.log('Broadcasting state update');
     try {
-        io.emit('updateState', currentState);
+        if (roomId) {
+            io.to(`room:${roomId}`).emit('updateState', currentState);
+        } else {
+            io.emit('updateState', currentState);
+        }
         console.log('State broadcast successful.');
     } catch (error) {
         console.error('!!! Error during io.emit in broadcastState:', error);
@@ -62,18 +67,137 @@ const broadcastState = (io: IoServer) => {
 
 // Initialize socket connection and set up event handlers
 export const initializeSocketHandlers = (io: IoServer) => {
-    io.on('connection', (socket: IoSocket) => {
+io.on('connection', (socket: IoSocket) => { matchStateManager.attachIo(io as any);
         console.log(`Client connected: ${socket.id}`);
 
-        // Send initial state to newly connected client
+// Send initial state to newly connected client
         socket.emit('updateState', getState());
+        const roomId: string | undefined = (socket.data as any)?.roomId;
+
+        // Feature flags (env-driven)
+        const ENABLE_MATCHES = process.env.ENABLE_REALTIME_MATCHES === 'true';
+        const ENABLE_TIMERS = process.env.ENABLE_MATCH_TIMERS !== 'false';
+
+        // --- Real-time match integration ---
+        socket.on('joinMatch', ({ matchId }) => {
+            if (!ENABLE_MATCHES) return;
+            try {
+                socket.join(`match:${matchId}`);
+                const state = matchStateManager.getMatch(matchId);
+                if (state) {
+                    socket.emit('matchStateUpdate', state);
+                }
+            } catch (error) {
+                console.error('joinMatch error:', error);
+            }
+        });
+
+        socket.on('leaveMatch', ({ matchId }) => {
+            if (!ENABLE_MATCHES) return;
+            try {
+                socket.leave(`match:${matchId}`);
+            } catch (error) {
+                console.error('leaveMatch error:', error);
+            }
+        });
+
+        socket.on('createMatch', (payload) => {
+            if (!ENABLE_MATCHES) return;
+            try {
+                const id = matchStateManager.createMatch(payload);
+                const state = matchStateManager.getMatch(id);
+                if (state) {
+                    io.to(`match:${id}`).emit('matchStateUpdate', state);
+                }
+            } catch (error) {
+                console.error('createMatch error:', error);
+            }
+        });
+
+        socket.on('getMatchState', ({ matchId }) => {
+            if (!ENABLE_MATCHES) return;
+            const state = matchStateManager.getMatch(matchId);
+            if (state) socket.emit('matchStateUpdate', state);
+        });
+
+        socket.on('startTimer', (payload) => {
+            if (!ENABLE_MATCHES || !ENABLE_TIMERS) return;
+            try {
+                const timer = matchStateManager.startTimer(payload);
+                if (timer) {
+                    io.to(`match:${payload.matchId}`).emit('timerUpdate', timer);
+                }
+            } catch (error) {
+                console.error('startTimer error:', error);
+            }
+        });
+
+        socket.on('pauseTimer', (payload) => {
+            if (!ENABLE_MATCHES || !ENABLE_TIMERS) return;
+            try {
+                matchStateManager.pauseTimer(payload);
+                const state = matchStateManager.getMatch(payload.matchId);
+                if (state?.timer) io.to(`match:${payload.matchId}`).emit('timerUpdate', state.timer);
+            } catch (error) {
+                console.error('pauseTimer error:', error);
+            }
+        });
+
+        socket.on('resumeTimer', (payload) => {
+            if (!ENABLE_MATCHES || !ENABLE_TIMERS) return;
+            try {
+                matchStateManager.resumeTimer(payload);
+            } catch (error) {
+                console.error('resumeTimer error:', error);
+            }
+        });
+
+        socket.on('stopTimer', (payload) => {
+            if (!ENABLE_MATCHES || !ENABLE_TIMERS) return;
+            try {
+                matchStateManager.stopTimer(payload);
+                const state = matchStateManager.getMatch(payload.matchId);
+                if (state) io.to(`match:${payload.matchId}`).emit('matchStateUpdate', state);
+            } catch (error) {
+                console.error('stopTimer error:', error);
+            }
+        });
+
+        socket.on('setTimerDuration', (payload) => {
+            if (!ENABLE_MATCHES || !ENABLE_TIMERS) return;
+            try {
+                matchStateManager.setTimerDuration(payload);
+                const state = matchStateManager.getMatch(payload.matchId);
+                if (state?.timer) io.to(`match:${payload.matchId}`).emit('timerUpdate', state.timer);
+            } catch (error) {
+                console.error('setTimerDuration error:', error);
+            }
+        });
+
+        socket.on('updateMatchScore', (payload) => {
+            if (!ENABLE_MATCHES) return;
+            try {
+                matchStateManager.updateScore(payload);
+            } catch (error) {
+                console.error('updateMatchScore error:', error);
+            }
+        });
+
+        socket.on('addPenalty', (payload) => {
+            if (!ENABLE_MATCHES) return;
+            try {
+                matchStateManager.addPenalty(payload);
+            } catch (error) {
+                console.error('addPenalty error:', error);
+            }
+        });
 
         // Handle team updates
         socket.on('updateTeam', (payload) => {
             console.log(`Received updateTeam from ${socket.id}:`, payload);
             if (payload.updates && Object.keys(payload.updates).length > 0) {
-                updateTeam(payload.teamId, payload.updates);
-                broadcastState(io);
+updateTeam(payload.teamId, payload.updates);
+                broadcastState(io, roomId);
             } else {
                 console.warn(`Received updateTeam from ${socket.id} without valid updates`);
             }
@@ -83,8 +207,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('updateScore', (payload) => {
             console.log(`Received updateScore from ${socket.id}:`, payload);
             const action = payload.action > 0 ? 'increment' : 'decrement';
-            updateScore(payload.teamId, action);
-            broadcastState(io);
+updateScore(payload.teamId, action);
+            broadcastState(io, roomId);
         });
 
         // Handle scoring mode changes
@@ -93,8 +217,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
             try {
                 const mode = payload.mode === 'manual' ? 'manual' : 'round';
                 // updateState is imported via ../state through re-exports
-                require('../state').updateState({ scoringMode: mode });
-                broadcastState(io);
+require('../state').updateState({ scoringMode: mode });
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error setting scoring mode:', error);
                 socket.emit('updateState', getState());
@@ -104,64 +228,64 @@ export const initializeSocketHandlers = (io: IoServer) => {
         // Handle penalty updates
         socket.on('updatePenalty', (payload) => {
             console.log(`Received updatePenalty from ${socket.id}:`, payload);
-            updatePenalty(payload.teamId, payload.type);
-            broadcastState(io);
+updatePenalty(payload.teamId, payload.type);
+            broadcastState(io, roomId);
         });
 
         // Handle penalty resets
         socket.on('resetPenalties', (payload) => {
             console.log(`Received resetPenalties from ${socket.id}:`, payload);
-            resetPenalties(payload.teamId);
-            broadcastState(io);
+resetPenalties(payload.teamId);
+            broadcastState(io, roomId);
         });
 
         // Handle full reset
         socket.on('resetAll', () => {
             console.log(`Received resetAll from ${socket.id}`);
-            resetAllState();
-            broadcastState(io);
+resetAllState();
+            broadcastState(io, roomId);
         });
 
         // Handle logo updates
         socket.on('updateLogo', (newLogoUrl) => {
             console.log(`Received updateLogo from ${socket.id}. URL Length: ${newLogoUrl ? newLogoUrl.length : 'null'}`);
-            updateLogoUrl(newLogoUrl);
-            broadcastState(io);
+updateLogoUrl(newLogoUrl);
+            broadcastState(io, roomId);
         });
 
         // Handle text updates
         socket.on('updateText', (payload) => {
             console.log(`Received updateText from ${socket.id}. Field: ${payload.field}`);
-            updateText(payload);
-            broadcastState(io);
+updateText(payload);
+            broadcastState(io, roomId);
         });
 
         // Handle text style updates
         socket.on('updateTextStyle', (payload) => {
             console.log(`Received updateTextStyle from ${socket.id}:`, payload);
-            updateTextStyle(payload);
-            broadcastState(io);
+updateTextStyle(payload);
+            broadcastState(io, roomId);
         });
 
         // Handle logo size updates
         socket.on('updateLogoSize', (payload) => {
             console.log(`Received updateLogoSize from ${socket.id}:`, payload);
-            updateLogoSize(payload.size);
-            broadcastState(io);
+updateLogoSize(payload.size);
+            broadcastState(io, roomId);
         });
 
         // Handle visibility updates
         socket.on('updateVisibility', (payload) => {
             console.log(`Received updateVisibility from ${socket.id}:`, payload);
-            updateVisibility(payload);
-            broadcastState(io);
+updateVisibility(payload);
+            broadcastState(io, roomId);
         });
 
         // Handle team emoji switching
         socket.on('switchTeamEmojis', () => {
             console.log(`Received switchTeamEmojis from ${socket.id}`);
-            switchTeamEmojis();
-            broadcastState(io);
+switchTeamEmojis();
+            broadcastState(io, roomId);
         });
 
         // Fucking round system handlers
@@ -170,8 +294,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('setNextRoundDraft', (payload) => {
             console.log(`Received setNextRoundDraft from ${socket.id}`);
             try {
-                setNextRoundDraft(payload?.config ?? null);
-                broadcastState(io);
+setNextRoundDraft(payload?.config ?? null);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error handling setNextRoundDraft:', error);
                 socket.emit('updateState', getState());
@@ -181,8 +305,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('enqueueUpcoming', (payload) => {
             console.log(`Received enqueueUpcoming from ${socket.id}`);
             try {
-                enqueueUpcoming(payload.config);
-                broadcastState(io);
+enqueueUpcoming(payload.config);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error handling enqueueUpcoming:', error);
                 socket.emit('updateState', getState());
@@ -193,8 +317,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received dequeueUpcoming from ${socket.id}`);
             try {
                 const removed = dequeueUpcoming();
-                console.log('Dequeued upcoming:', removed);
-                broadcastState(io);
+console.log('Dequeued upcoming:', removed);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error handling dequeueUpcoming:', error);
                 socket.emit('updateState', getState());
@@ -205,11 +329,11 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('startGame', () => {
             console.log(`Received startGame from ${socket.id}`);
             try {
-                const ok = startGame();
+const ok = startGame();
                 if (!ok) {
                     console.warn('startGame rejected: no valid draft or upcoming');
                 }
-                broadcastState(io);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error handling startGame:', error);
                 socket.emit('updateState', getState());
@@ -219,9 +343,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('finishGame', () => {
             console.log(`Received finishGame from ${socket.id}`);
             try {
-                const reportPath = finishGame();
+const reportPath = finishGame();
                 console.log('Finish game report path:', reportPath);
-                broadcastState(io);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error('Error handling finishGame:', error);
                 socket.emit('updateState', getState());
@@ -238,9 +362,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
                 }
                 console.log(`Received startRound from ${socket.id}, round #${payload.config.number}`);
                 const result = startRound({ config: payload.config });
-                if (result) {
+if (result) {
                     console.log(`Successfully started round ${payload.config.number} of type ${payload.config.type}`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to start round: invalid configuration`);
                     socket.emit('updateState', getState()); // Send current state back to client
@@ -256,9 +380,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received endRound from ${socket.id} with points:`, payload.points);
             try {
                 const result = saveRoundResults(payload);
-                if (result) {
+if (result) {
                     console.log(`Round results saved with ${result.length} total rounds in history`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to save round results: no active round`);
                     socket.emit('updateState', getState()); // Send current state back to client
@@ -273,8 +397,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
         socket.on('updateRoundSetting', (payload) => {
             console.log(`Received updateRoundSetting from ${socket.id}: ${payload.target} = ${payload.visible}`);
             try {
-                updateRoundSetting(payload.target, payload.visible);
-                broadcastState(io);
+updateRoundSetting(payload.target, payload.visible);
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error(`Damn it! Error handling updateRoundSetting:`, error);
                 socket.emit('updateState', getState()); // Ensure client has correct state
@@ -286,9 +410,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received resetRounds from ${socket.id}`);
             try {
                 const result = resetRounds();
-                if (result) {
+if (result) {
                     console.log(`Round system reset successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to reset rounds`);
                     socket.emit('updateState', getState()); // Send current state back to client
@@ -321,9 +445,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received saveTemplate from ${socket.id}:`, payload.name);
             try {
                 const result = saveTemplate(payload);
-                if (result) {
-                    console.log(`Template "${payload.name}" saved successfully`);
-                    broadcastState(io);
+if (result) {
+                    console.log(`Template \"${payload.name}\" saved successfully`);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to save template: invalid configuration`);
                     socket.emit('updateState', getState());
@@ -338,9 +462,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received updateTemplate from ${socket.id} for template: ${payload.id}`);
             try {
                 const result = updateTemplate(payload.id, payload.updates);
-                if (result) {
+if (result) {
                     console.log(`Template ${payload.id} updated successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to update template: not found`);
                     socket.emit('updateState', getState());
@@ -355,9 +479,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received deleteTemplate from ${socket.id} for template: ${templateId}`);
             try {
                 const result = deleteTemplate(templateId);
-                if (result) {
+if (result) {
                     console.log(`Template ${templateId} deleted successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to delete template: not found`);
                     socket.emit('updateState', getState());
@@ -374,9 +498,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received createPlaylist from ${socket.id}:`, payload.name);
             try {
                 const result = createPlaylist(payload);
-                if (result) {
-                    console.log(`Playlist "${payload.name}" created successfully`);
-                    broadcastState(io);
+if (result) {
+                    console.log(`Playlist \"${payload.name}\" created successfully`);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to create playlist: invalid configuration`);
                     socket.emit('updateState', getState());
@@ -391,9 +515,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received updatePlaylist from ${socket.id} for playlist: ${payload.id}`);
             try {
                 const result = updatePlaylist(payload.id, payload.updates);
-                if (result) {
+if (result) {
                     console.log(`Playlist ${payload.id} updated successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to update playlist: not found`);
                     socket.emit('updateState', getState());
@@ -408,9 +532,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received deletePlaylist from ${socket.id} for playlist: ${playlistId}`);
             try {
                 const result = deletePlaylist(playlistId);
-                if (result) {
+if (result) {
                     console.log(`Playlist ${playlistId} deleted successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to delete playlist: not found`);
                     socket.emit('updateState', getState());
@@ -427,9 +551,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received startPlaylist from ${socket.id} for playlist: ${playlistId}`);
             try {
                 const result = startPlaylist(playlistId);
-                if (result) {
+if (result) {
                     console.log(`Playlist ${playlistId} started successfully`);
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error(`Failed to start playlist: not found or invalid`);
                     socket.emit('updateState', getState());
@@ -444,8 +568,8 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received stopPlaylist from ${socket.id}`);
             try {
                 stopPlaylist();
-                console.log('Playlist stopped successfully');
-                broadcastState(io);
+console.log('Playlist stopped successfully');
+                broadcastState(io, roomId);
             } catch (error) {
                 console.error(`Error handling stopPlaylist:`, error);
                 socket.emit('updateState', getState());
@@ -456,9 +580,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received nextInPlaylist from ${socket.id}`);
             try {
                 const result = nextInPlaylist();
-                if (result) {
+if (result) {
                     console.log('Advanced to next round in playlist');
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error('Failed to advance playlist: no active playlist or at end');
                     socket.emit('updateState', getState());
@@ -473,9 +597,9 @@ export const initializeSocketHandlers = (io: IoServer) => {
             console.log(`Received previousInPlaylist from ${socket.id}`);
             try {
                 const result = previousInPlaylist();
-                if (result) {
+if (result) {
                     console.log('Moved to previous round in playlist');
-                    broadcastState(io);
+                    broadcastState(io, roomId);
                 } else {
                     console.error('Failed to move back: no active playlist or at start');
                     socket.emit('updateState', getState());

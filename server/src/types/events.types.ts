@@ -24,12 +24,26 @@ import {
 } from './rounds.types';
 
 // Server -> Client Events
+import type { MatchState, TimerState } from './match.types';
+
 export interface ServerToClientEvents {
     updateState: (state: ScoreboardState) => void;
     initialState: (state: ScoreboardState) => void;
+
+    // Real-time match integration broadcasts
+    matchStateUpdate: (state: MatchState) => void;
+    timerUpdate: (timer: TimerState) => void;
 }
 
 // Client -> Server Events
+import {
+    CreateMatchPayload,
+    MatchPenaltyPayload,
+    MatchScorePayload,
+    TimerSetPayload,
+    TimerStartPayload
+} from './match.types';
+
 export interface ClientToServerEvents {
     getState: () => void;
     updateTeam: (payload: UpdateTeamPayload) => void;
@@ -74,6 +88,22 @@ export interface ClientToServerEvents {
     stopPlaylist: () => void;
     nextInPlaylist: () => void;
     previousInPlaylist: () => void;
+
+    // Real-time match integration
+    joinMatch: (payload: { matchId: string }) => void;
+    leaveMatch: (payload: { matchId: string }) => void;
+
+    createMatch: (payload: CreateMatchPayload) => void;
+    getMatchState: (payload: { matchId: string }) => void;
+
+    startTimer: (payload: TimerStartPayload) => void;
+    pauseTimer: (payload: { matchId: string, timerId: string }) => void;
+    resumeTimer: (payload: { matchId: string, timerId: string }) => void;
+    stopTimer: (payload: { matchId: string, timerId: string }) => void;
+    setTimerDuration: (payload: TimerSetPayload) => void;
+
+    updateMatchScore: (payload: MatchScorePayload) => void;
+    addPenalty: (payload: MatchPenaltyPayload) => void;
 }
 
 // Inter-Server Events (not used in this simple setup)

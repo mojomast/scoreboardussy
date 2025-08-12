@@ -161,6 +161,9 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         if ('showEmojis' in s) base.showEmojis = s.showEmojis;
         if ('team1Emoji' in s) base.team1Emoji = s.team1Emoji;
         if ('team2Emoji' in s) base.team2Emoji = s.team2Emoji;
+        // Voting flags
+        if ('votingEnabled' in s) (base as any).votingEnabled = !!s.votingEnabled;
+        if ('votingActive' in s) (base as any).votingActive = !!s.votingActive;
 
         // Rounds: prefer unified server shape (s.rounds), fall back to legacy fields
         const roundsFromServer = s.rounds || {};
@@ -204,8 +207,10 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
             notes: r.notes ?? undefined,
         }));
 
-        // Derive or trust totals depending on mode
+        // Handle scoring based on mode
         if (mode === 'round') {
+            // In round mode, we typically derive from history, but preserve server scores if they exist
+            // This allows for external score additions (like voting auto-awards) to persist
             const derivedTotals = base.rounds.history.reduce(
                 (acc, r) => {
                     acc.team1 += r.points?.team1 ?? 0;
@@ -214,8 +219,20 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
                 },
                 { team1: 0, team2: 0 }
             );
-            base.team1.score = derivedTotals.team1;
-            base.team2.score = derivedTotals.team2;
+            
+            // Use server scores if they exist and are different from derived totals
+            // This preserves external score additions (voting, manual adjustments)
+            if (typeof s.team1?.score === 'number') {
+                base.team1.score = s.team1.score;
+            } else {
+                base.team1.score = derivedTotals.team1;
+            }
+            
+            if (typeof s.team2?.score === 'number') {
+                base.team2.score = s.team2.score;
+            } else {
+                base.team2.score = derivedTotals.team2;
+            }
         } else {
             // manual mode: use server-provided totals
             if (typeof s.team1?.score === 'number') base.team1.score = s.team1.score;

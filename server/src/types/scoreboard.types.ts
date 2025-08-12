@@ -39,6 +39,10 @@ export interface ScoreboardState {
     team1Emoji: 'hand' | 'fist' | null;
     team2Emoji: 'hand' | 'fist' | null;
     
+    // Audience voting (experimental, optional flags)
+    votingEnabled?: boolean;
+    votingActive?: boolean;
+
     // Unified round state
     rounds: RoundState;
 }

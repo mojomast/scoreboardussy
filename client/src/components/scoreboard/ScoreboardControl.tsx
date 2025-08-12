@@ -23,6 +23,7 @@ import {
     SimpleGrid,
     Switch
 } from '@mantine/core';
+import { MonPacingOverlay } from '../integrations/MonPacingOverlay';
 // Removed unused server type imports
 
 /**
@@ -193,6 +194,23 @@ const ScoreboardControl: React.FC = () => {
     // Extract Settings into reusable panel for docking or tab usage
     const SettingsPanel: React.FC = () => (
         <Stack gap="xl">
+            {/* Voting Controls */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">Audience Voting</Title>
+                <Group gap="sm">
+                    <Button onClick={async () => { await fetch('/api/voting/start', { method: 'POST' }); }}>
+                        Start Vote (show QR)
+                    </Button>
+                    <Button color="green" onClick={async () => { await fetch('/api/voting/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoAward: true }) }); }}>
+                        End Vote + Auto-Award
+                    </Button>
+                    <Button color="gray" onClick={async () => { await fetch('/api/voting/end', { method: 'POST' }); }}>
+                        End Vote (no award)
+                    </Button>
+                </Group>
+                <Text size="xs" c="dimmed" mt="xs">Start shows a QR on the display so spectators can vote. End will compute the winner and, if chosen, add a point automatically.</Text>
+            </Paper>
+
             {/* Language Selector */}
             <Box>
                 <Text size="sm" fw={500} mb={4}>{t('scoreboardControl.languageSelectLabel')}</Text>
@@ -206,6 +224,46 @@ const ScoreboardControl: React.FC = () => {
                     fullWidth
                 />
             </Box>
+
+            {/* Mon-Pacing Integration */}
+            <Paper shadow="xs" p="md">
+                <Title order={4} mb="sm">Mon-Pacing</Title>
+                <Group justify="space-between" align="center">
+                    <Text size="sm" c="dimmed">Enable integration overlay (QR) on display</Text>
+                    <Switch
+                        checked={(() => { try { return localStorage.getItem('enableMonPacingIntegration') === 'true'; } catch { return false; } })()}
+                        onChange={(e) => { try { localStorage.setItem('enableMonPacingIntegration', String(e.currentTarget.checked)); } catch {} }}
+                        size="sm"
+                    />
+                </Group>
+                <Text size="xs" c="dimmed" mt={6}>When enabled, the display view will show a QR containing {`{ url, id, token }`} for Mon-Pacing.</Text>
+                <Group mt="sm">
+                    <SegmentedControl
+                        data={[
+                            { label: 'Bottom-Left', value: 'bottom-left' },
+                            { label: 'Bottom-Right', value: 'bottom-right' },
+                            { label: 'Top-Left', value: 'top-left' },
+                            { label: 'Top-Right', value: 'top-right' },
+                        ]}
+                        value={(() => { try { return localStorage.getItem('monPacing.corner') || 'bottom-left'; } catch { return 'bottom-left'; } })()}
+                        onChange={(val) => { try { localStorage.setItem('monPacing.corner', val); } catch {} }}
+                        size="xs"
+                        fullWidth
+                    />
+                    <Button size="xs" variant="light" color="red" onClick={() => { try { localStorage.removeItem('monPacing.qrPayload'); localStorage.removeItem('monPacing.matchId'); } catch {} }}>
+                        Regenerate QR/ID
+                    </Button>
+                </Group>
+            </Paper>
+
+            {/* Mon-Pacing QR Preview (shown in Control panel) */}
+            <Paper shadow="xs" p="md">
+                <Title order={5} mb="sm">Mon-Pacing QR (Preview)</Title>
+                <Box style={{ position: 'relative', minHeight: 160 }}>
+                    <MonPacingOverlay corner={'top-left'} />
+                </Box>
+                <Text size="xs" c="dimmed" mt={6}>This QR is shown here for convenience and will no longer display on the scoreboard.</Text>
+            </Paper>
 
             {/* Logo Management */}
             <Paper shadow="xs" p="md">
@@ -456,6 +514,7 @@ const ScoreboardControl: React.FC = () => {
                                         key={i18n.language + '-team1'}
                                         teamId="team1"
                                         team={team1}
+                                        showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'}
                                     />
                                 )}
                                 {team2 && (
@@ -463,14 +522,17 @@ const ScoreboardControl: React.FC = () => {
                                         key={i18n.language + '-team2'}
                                         teamId="team2"
                                         team={team2}
+                                        showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'}
                                     />
                                 )}
                             </SimpleGrid>
-                            <Paper shadow="xs" p="md">
-                                <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>
-                                <RoundControls />
-                                <CurrentRound />
-                            </Paper>
+                                {(state?.scoringMode as 'round' | 'manual') === 'round' && (
+                                    <Paper shadow="xs" p="md">
+                                        <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>
+                                        <RoundControls />
+                                        <CurrentRound />
+                                    </Paper>
+                                )}
                         </Stack>
                     </Tabs.Panel>
 
@@ -491,13 +553,13 @@ const ScoreboardControl: React.FC = () => {
                             </Tabs.List>
                             <Tabs.Panel value="teams" pt="xs">
                                 <Stack gap="lg">
-                                    <SimpleGrid cols={2} spacing="lg">
-                                        {team1 && (
-                                            <TeamControlPanel key={i18n.language + '-team1'} teamId="team1" team={team1} />
-                                        )}
-                                        {team2 && (
-                                            <TeamControlPanel key={i18n.language + '-team2'} teamId="team2" team={team2} />
-                                        )}
+                            <SimpleGrid cols={2} spacing="lg">
+                                {team1 && (
+                                    <TeamControlPanel key={i18n.language + '-team1'} teamId="team1" team={team1} showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'} />
+                                )}
+                                {team2 && (
+                                    <TeamControlPanel key={i18n.language + '-team2'} teamId="team2" team={team2} showManualControls={(state?.scoringMode as 'round' | 'manual') === 'manual'} />
+                                )}
                                     </SimpleGrid>
                                     <Paper shadow="xs" p="md">
                                         <Title order={4} mb="sm">{t('scoreboardControl.roundsSectionTitle', 'Rounds')}</Title>

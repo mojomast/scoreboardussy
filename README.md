@@ -1,6 +1,8 @@
 # Scoreboardussy 🏆
 
-Version 0.4.0
+Version 0.5.6-beta
+
+[0.5-beta Release Notes and Deployment](README-0.5beta.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
@@ -15,11 +17,18 @@ Version 0.4.0
 
 ## ✨ Features
 
+0.5-beta highlights
+- Mon-Pacing integration with QR-based linking and interop endpoints (/qr, /match, /timer)
+- Real-time match timers with server-authoritative updates (100ms)
+- LAN-friendly startup scripts and a Windows standalone launcher
+- Control UI toggle for showing the Mon-Pacing QR overlay on the display
+
 - Real-time updates via WebSockets (Socket.IO)
 - Separate control panel and display views
 - Customizable teams, titles, and colors
 - Logo upload
 - Major/minor penalty tracking
+- Audience voting (start/stop votes, cast via API; optional auto-award to winner)
 - Crowd voting emoji display
 - English and French support
 - Fullscreen and responsive design (Tailwind CSS)
@@ -70,6 +79,15 @@ Then open:
 ---
 
 ### 2. Deploying on a Local Network
+
+Standalone (Windows)
+- Download the latest 0.5.4-beta release assets: ImprovScoreboard.exe and Start-Scoreboard.ps1
+- Keep both files together, then run Start-Scoreboard.ps1 (right-click → Run with PowerShell)
+  - Auto-detects your LAN IP and starts the server bound to it
+  - Opens Control UI in your browser
+  - Optional params: -Ip 192.168.1.68 -Port 3001 -NoBrowser
+
+Manual (Node production)
 
 Use this mode to run the scoreboard from one computer and access it from other devices on the same Wi-Fi or Ethernet network.
 
@@ -165,7 +183,14 @@ scoreboardussy/
 
 </details>
 
-### 🧰 What Changed
+### 🧰 What Changed (0.5-beta)
+
+- Mon-Pacing interop: QR overlay, /api/interop/mon-pacing/qr → { url, id, token }, and endpoints /match, /timer (legacy /event kept)
+- Server serves client/dist in production and binds to 0.0.0.0 for LAN access
+- New Windows standalone launcher (ImprovScoreboard.exe + Start-Scoreboard.ps1)
+- LAN-aware production start script (scripts/start-server-prod.ps1) with auto-open browser
+- Real-time match scaffolding (state manager, timers, socket handlers)
+- Design docs and Referee Quickstart for setup and usage
 
 - New dockable Settings panel with toggle in header; can view Settings side-by-side with Teams/Rounds
 - Modular Settings includes Scoring Mode (Round/Manual) and Restart Match, and excludes lifecycle controls
@@ -182,6 +207,54 @@ scoreboardussy/
 - Server reorganized into modules: server/src/modules/{api,export,state} with server/src/types for events/payloads
 - Basic persistence added via server/data/scoreboard.json
 - New helper scripts for testing: test_all.ps1, test_api.ps1, test_websocket.ps1
+
+---
+
+## 🔐 Environment configuration (server)
+
+Create server/.env from server/.env.example. Important keys:
+- PORT: default 3001
+- NODE_ENV: production in production
+- PUBLIC_URL: e.g., https://yourdomain.com (used for generating links)
+- JWT_SECRET: set a strong secret in production
+- DATABASE_URL (M2+): Postgres connection string
+- REDIS_URL (M2+): Redis connection string
+
+To generate Prisma client after setting DATABASE_URL:
+- From server/: npx prisma generate
+- Run migrations (to be added in M2): npx prisma migrate deploy
+
+### Dev stack (Postgres + Redis)
+- docker compose -f docker-compose.dev.yml up -d
+- .env example values:
+  - DATABASE_URL=postgresql://app:example@localhost:5432/improvscoreboard?schema=public
+  - REDIS_URL=redis://localhost:6379
+- Then: from server/: npx prisma generate
+
+---
+
+## 🗳️ Audience Voting (experimental)
+
+The server exposes simple endpoints to run audience votes between Team 1 and Team 2.
+
+- Enable/disable voting globally
+  - POST /api/voting/enable { "enabled": boolean }
+- Start a voting session
+  - POST /api/voting/start { "matchId"?: string }
+- Cast a vote for a team (while active)
+  - POST /api/voting/vote/team1
+  - POST /api/voting/vote/team2
+- End the voting session, optionally auto-award a point to the winner
+  - POST /api/voting/end { "matchId"?: string, "autoAward"?: boolean }
+- Get current voting state
+  - GET /api/voting/state
+
+Notes
+- Votes are kept in-memory; they reset each time you start a session.
+- If autoAward=true when ending and there is a winner, the server increments that team’s score.
+- You can surface a QR or short link to your audience that hits the vote endpoints from phones (implementation up to you).
+
+For detailed request/response examples, see docs/Voting.md.
 
 ---
 

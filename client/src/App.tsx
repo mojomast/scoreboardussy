@@ -4,13 +4,19 @@ import { MantineProvider } from '@mantine/core';
 import { ScoreboardProvider } from './contexts/ScoreboardContext';
 import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
 import ScoreboardControl from './components/scoreboard/ScoreboardControl';
+import Home from './components/Home';
 
 // Import Mantine core styles
 import '@mantine/core/styles.css';
 
 function App() {
   const { t } = useTranslation();
-  const getHashView = () => window.location.hash || '#/display';
+  const getHashView = () => {
+    const raw = window.location.hash || '#/home';
+    // Strip any query string from the hash so "#/control?room=..." matches "#/control"
+    const path = raw.split('?')[0] || '#/home';
+    return path;
+  };
   const [view, setView] = useState<string>(getHashView());
 
   useEffect(() => {
@@ -23,7 +29,9 @@ function App() {
   return (
     <MantineProvider>
       <ScoreboardProvider>
-        {view === '#/display' ? (
+        {view === '#/home' ? (
+          <Home />
+        ) : view === '#/display' ? (
           <ScoreboardDisplay />
         ) : view === '#/control' ? (
           <ScoreboardControl />

@@ -1,8 +1,12 @@
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App'; 
+import './i18n';
+import { initRoomAuthFromUrl } from './utils/room';
 import './index.css'; 
-import './i18n'; 
+
+// Capture token from URL early so socket can use it on first connect
+initRoomAuthFromUrl(true);
 
 const rootElement = document.getElementById('root');
 

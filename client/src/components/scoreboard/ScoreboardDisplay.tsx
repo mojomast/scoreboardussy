@@ -16,6 +16,26 @@ const formatRoundType = (type: RoundType): string => {
 const ScoreboardDisplay: React.FC = () => {
     const { t } = useTranslation(); // Initialize hook
     const { state, connectionState } = useScoreboard(); // Destructure state
+    const [votingData, setVotingData] = React.useState<{ active: boolean; enabled: boolean; votes: { team1: number; team2: number } } | null>(null);
+    React.useEffect(() => {
+        let cancelled = false;
+        async function poll() {
+            try {
+                const res = await fetch('/api/voting/state', { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!cancelled) setVotingData({ 
+                        active: !!data.active, 
+                        enabled: !!data.enabled,
+                        votes: data.votes || { team1: 0, team2: 0 }
+                    });
+                }
+            } catch {}
+        }
+        poll();
+        const id = setInterval(poll, 2000); // Poll every 2 seconds for more responsive vote updates
+        return () => { cancelled = true; clearInterval(id); };
+    }, []);
     const { 
         team1, 
         team2, 
@@ -150,7 +170,49 @@ const ScoreboardDisplay: React.FC = () => {
 
             {/* Team Panels Container (Should fill remaining space) */} 
             {/* Ensure this container and its children fill the height */} 
-            <div className="relative flex-1 flex flex-row w-full"> 
+      <div className="relative flex-1 flex flex-row w-full">
+        {/* Voting Display - Large QR Code Center, Vote Count Top */}
+        {(((state as any)?.votingEnabled && (state as any)?.votingActive) || (votingData?.enabled && votingData?.active)) && (
+          <>
+            {/* Live Vote Count Display - Top banner */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 bg-black/90 border-2 border-yellow-400 px-8 py-4 rounded-lg">
+              <div className="text-center mb-3">
+                <Text size="lg" fw={700} c="yellow.3">AUDIENCE VOTING - LIVE RESULTS</Text>
+              </div>
+              <div className="flex gap-8 items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-400 mb-1">{votingData?.votes?.team1 || 0}</div>
+                  <Text size="sm" c="blue.3">{team1?.name || 'Team 1'}</Text>
+                </div>
+                <Text size="xl" c="gray.5" mx={3}>vs</Text>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-400 mb-1">{votingData?.votes?.team2 || 0}</div>
+                  <Text size="sm" c="red.3">{team2?.name || 'Team 2'}</Text>
+                </div>
+              </div>
+            </div>
+            
+            {/* Large QR Code - Center of screen for easy scanning */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white p-6 rounded-2xl shadow-2xl border-4 border-yellow-400">
+              <div className="text-center mb-4">
+                <Text size="xl" fw={700} c="black" mb={2}>SCAN TO VOTE</Text>
+                <Text size="md" c="gray.7">Use your phone camera</Text>
+              </div>
+              <div className="flex justify-center">
+                <img 
+                  src={`/api/voting/qr`} 
+                  alt="Vote QR Code" 
+                  style={{ width: 280, height: 280 }} 
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="text-center mt-4">
+                <Text size="sm" c="gray.6">Tap the QR code or go to:</Text>
+                <Text size="xs" c="blue.6" fw={500}>improvscoreboard.com/vote</Text>
+              </div>
+            </div>
+          </>
+        )}
                  {/* Wrap each panel in a div that grows and fills height */} 
                  <div className="flex-1 h-full"> 
                      {team1 && (
@@ -191,14 +253,14 @@ const ScoreboardDisplay: React.FC = () => {
             <div className="w-full flex flex-col items-center pb-4">
                 {/* Optional Footer - Apply dynamic styles */}
                 {currentFooter && (
-                    <p 
+                    <p
                         className="font-medium text-center text-gray-400 text-xl" // Base styles
                         style={{
                             color: footerTextColor || '#CCCCCC', // Default gray if not set
                             fontSize: `${footerTextSize || 1.25}rem` // Use state size (rem), default 1.25rem (text-xl)
                         }}
                     >
-                        {currentFooter}
+                        {currentFooter + ' ✨'}
                     </p>
                 )}
             </div>
@@ -206,5 +268,6 @@ const ScoreboardDisplay: React.FC = () => {
         </div>
     );
 };
+
 
 export default ScoreboardDisplay;

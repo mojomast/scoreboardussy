@@ -1,0 +1,10 @@
+{
+	# Optional: email for ACME/Lets Encrypt
+	# email you@example.com
+}
+
+yourdomain.com {
+	encode gzip
+	# Proxy to Node app service (docker compose service name: web)
+	reverse_proxy web:3001
+}

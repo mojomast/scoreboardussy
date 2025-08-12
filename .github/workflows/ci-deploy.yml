@@ -1,0 +1,108 @@
+name: CI Deploy (build & deploy)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional image tag to use (overrides automatic tag)'
+        required: false
+        default: ''
+      registry:
+        description: 'Container registry (ghcr.io by default)'
+        required: false
+        default: 'ghcr.io'
+      image_name:
+        description: 'Repository image name (without tag)'
+        required: false
+        default: 'ghcr.io/mojomast/improvscoreboard'
+
+env:
+  IMAGE_NAME: ${{ github.event.inputs.image_name || 'ghcr.io/mojomast/improvscoreboard' }}
+  REGISTRY: ${{ github.event.inputs.registry || 'ghcr.io' }}
+
+jobs:
+  build-and-deploy:
+    name: Build, push to registry, and deploy to Rackspace Spot
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Compute image tag
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Prefer explicit input tag, otherwise derive from ref
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          elif [[ "${GITHUB_REF}" == refs/heads/main ]]; then
+            TAG="latest"
+          else
+            TAG="${GITHUB_SHA::7}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to registry
+        if: ${{ env.REGISTRY == 'ghcr.io' }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
+            ${{ env.IMAGE_NAME }}:latest
+          file: Dockerfile
+
+      - name: Prepare kubeconfig
+        run: |
+          if [[ -n "${{ secrets.KUBECONFIG_DATA }}" ]]; then
+            echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > "$HOME/.kube/config"
+            chmod 600 "$HOME/.kube/config"
+          else
+            echo "KUBECONFIG_DATA not provided as a secret; ensure kubeconfig is available"
+            exit 1
+          fi
+
+      - name: (Optional) Ensure imagePullSecret exists
+        run: |
+          if [[ -n "${{ secrets.GHCR_TOKEN }}" ]]; then
+            kubectl create secret docker-registry ghcr-login-secret \
+              --docker-server=${{ env.REGISTRY }} \
+              --docker-username="${{ secrets.GHCR_USERNAME }}" \
+              --docker-password="${{ secrets.GHCR_TOKEN }}" \
+              --docker-email="noreply@example.com" -n default || true
+          else
+            echo "GHCR token not provided; skipping imagePullSecret creation"
+          fi
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/improvscoreboard improvscoreboard=${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }} -n default
+          kubectl rollout status deployment/improvscoreboard -n default --timeout=3m
+
+      - name: Save LoadBalancer IP
+        run: |
+          kubectl get svc improvscoreboard-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].ip}' > loadbalancer-ip.txt || true
+          cat loadbalancer-ip.txt || true
