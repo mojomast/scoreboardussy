@@ -91,12 +91,20 @@ export function endVotingSession(matchId?: string, opts?: { autoAward?: boolean 
   votingState.active = false;
   const { team1, team2 } = votingState.votes;
   const winner: 'team1' | 'team2' | null = team1 === team2 ? null : team1 > team2 ? 'team1' : 'team2';
+  
   if (opts?.autoAward && winner) {
-    // award a point
+    // Get current state
     const s = getState();
-    const delta = winner === 'team1' ? { team1: { ...(s as any).team1, score: (s as any).team1.score + 1 } } : { team2: { ...(s as any).team2, score: (s as any).team2.score + 1 } };
+    
+    // Calculate new score
+    const delta = winner === 'team1' 
+      ? { team1: { ...s.team1, score: s.team1.score + 1 } }
+      : { team2: { ...s.team2, score: s.team2.score + 1 } };
+    
+    // Update state
     updateState(delta as any);
   }
+  
   // Update UI flags
   updateState({ votingActive: false } as any);
   return { winner, team1, team2 };
