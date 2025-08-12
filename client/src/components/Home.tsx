@@ -1,122 +1,185 @@
 import React, { useEffect, useState } from 'react';
+import {
+  getRoomToken,
+  setRoomToken,
+  clearRoomToken,
+  getRoomId,
+  setRoomId,
+  clearRoomId,
+} from '@/utils/room';
 
-type Room = { id: string; createdAt: string; team1Name?: string; team2Name?: string; team1Color?: string; team2Color?: string; team1Score?: number; team2Score?: number };
+const buildShareLink = (roomId: string, token?: string) => {
+  const base = window.location.origin;
+  const url = new URL(`${base}/#/control`);
+  url.searchParams.set('room', roomId);
+  if (token) url.searchParams.set('token', token);
+  return url.toString();
+};
+
+const qrFor = (text: string) =>
+  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
+
+const isLikelyIpHostname = (host: string) => {
+  // matches IPv4 and plain numeric host
+  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) || host === 'localhost';
+};
 
 const Home: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [currentToken, setCurrentToken] = useState<string | null>(null);
 
-  async function refreshRooms() {
+  useEffect(() => {
     try {
-      setLoadingRooms(true);
-      const [roomsRes, stateRes] = await Promise.all([
-        fetch('/api/rooms'),
-        fetch('/api/state')
-      ]);
-      if (!roomsRes.ok) throw new Error(`HTTP ${roomsRes.status}`);
-      const data = await roomsRes.json();
-      let liveColors: { team1Color?: string; team2Color?: string; team1Score?: number; team2Score?: number } = {};
-      if (stateRes.ok) {
-        try {
-          const s = await stateRes.json();
-          liveColors = {
-            team1Color: s?.team1?.color,
-            team2Color: s?.team2?.color,
-            team1Score: typeof s?.team1?.score === 'number' ? s.team1.score : undefined,
-            team2Score: typeof s?.team2?.score === 'number' ? s.team2.score : undefined,
-          };
-        } catch {}
+      const token = getRoomToken();
+      const room = getRoomId();
+      if (token) setCurrentToken(token);
+      if (room) setCurrentRoomId(room);
+
+      // If no cached session and site was opened by direct IP or localhost, auto-create session
+      if (!room && !token) {
+        const host = window.location.hostname;
+        if (isLikelyIpHostname(host)) {
+          // Delay slightly to avoid blocking render
+          setTimeout(() => {
+            void createSession();
+          }, 250);
+        }
       }
-      const list = Array.isArray(data.rooms) ? data.rooms.map((r: any) => ({ ...r, ...liveColors })) : [];
-      setRooms(list);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load rooms');
-    } finally {
-      setLoadingRooms(false);
-    }
-  }
+    } catch {}
+  }, []);
 
-  useEffect(() => { refreshRooms(); }, []);
-
-  async function createRoom() {
+  async function createSession() {
     try {
       setBusy(true);
       setError(null);
       const res = await fetch('/api/rooms', { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // Navigate to control URL with referee token
-      const url = new URL(data.urls.control, window.location.origin);
-      url.searchParams.set('token', data.tokens.referee);
-      window.location.assign(url.toString());
+      const id: string = data.id;
+      const token: string | undefined = data?.tokens?.referee;
+      if (token) {
+        setRoomToken(token);
+        setCurrentToken(token);
+      }
+      if (id) {
+        setRoomId(id);
+        setCurrentRoomId(id);
+      }
     } catch (e: any) {
-      setError(e?.message || 'Failed to create room');
+      setError(e?.message || 'Failed to create session');
     } finally {
       setBusy(false);
     }
   }
 
-  async function deleteRoom(id: string) {
+  async function resetSession() {
     try {
+      setBusy(true);
       setError(null);
-      const res = await fetch(`/api/rooms/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await refreshRooms();
+      const id = currentRoomId || getRoomId();
+      if (id) {
+        try {
+          await fetch(`/api/rooms/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        } catch {}
+      }
+      clearRoomToken();
+      clearRoomId();
+      setCurrentRoomId(null);
+      setCurrentToken(null);
     } catch (e: any) {
-      setError(e?.message || 'Failed to delete room');
+      setError(e?.message || 'Failed to reset session');
+    } finally {
+      setBusy(false);
     }
   }
 
+  const copyLink = async () => {
+    if (!currentRoomId) return;
+    const link = buildShareLink(currentRoomId, currentToken || undefined);
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      setError('Copy failed - your browser may block clipboard access');
+    }
+  };
+
+  const openControl = () => {
+    if (!currentRoomId) return;
+    const link = buildShareLink(currentRoomId, currentToken || undefined);
+    window.open(link, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center gap-4 p-6">
-      <h1 className="text-2xl font-bold">Improv Scoreboard</h1>
-      <p className="text-gray-600">Start a new match or open an existing one.</p>
-      <div className="flex gap-3">
-        <button
-          onClick={createRoom}
-          disabled={busy}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded disabled:opacity-50"
-        >
-          {busy ? 'Creating…' : 'Create Room'}
-        </button>
-        <button onClick={refreshRooms} className="px-4 py-2 rounded border">Refresh Rooms</button>
-        <a href="#/control" className="px-4 py-2 rounded border">Open Local Control</a>
-        <a href="#/display" className="px-4 py-2 rounded border">Open Local Display</a>
+      <h1 className="text-2xl font-bold">Improv Scoreboard ✨</h1>
+      <p className="text-gray-600">Quick start: Join (creates a private session on this device). Share the session link or QR to let others join.</p>
+
+      <div className="flex gap-3 mt-3">
+        {!currentRoomId ? (
+          <button
+            onClick={createSession}
+            disabled={busy}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded disabled:opacity-50"
+          >
+            {busy ? 'Creating…' : 'Join (Create Session)'}
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={openControl}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+            >
+              Open Control
+            </button>
+            <button
+              onClick={copyLink}
+              className="px-4 py-2 rounded border"
+            >
+              Copy Link
+            </button>
+            <button
+              onClick={resetSession}
+              disabled={busy}
+              className="px-4 py-2 rounded border text-red-600"
+            >
+              {busy ? 'Resetting…' : 'Reset Session'}
+            </button>
+          </>
+        )}
       </div>
-      {error && <p className="text-red-600">{error}</p>}
+
+      {error && <p className="text-red-600 mt-2">{error}</p>}
+
+      {currentRoomId && (
+        <div className="w-full max-w-md mt-6 p-4 border rounded shadow-sm bg-white">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <div className="text-sm text-gray-500">Current Session ID</div>
+              <div className="font-mono text-sm truncate">{currentRoomId}</div>
+            </div>
+            <div className="text-right text-xs text-gray-400">Cached on this device</div>
+          </div>
+
+          <div className="mt-3 flex gap-3 items-center">
+            <img src={qrFor(buildShareLink(currentRoomId, currentToken || undefined))} alt="Session QR" style={{ width: 140, height: 140 }} className="rounded" />
+            <div className="flex-1">
+              <div className="text-sm mb-2 break-words">{buildShareLink(currentRoomId, currentToken || undefined)}</div>
+              <div className="flex gap-2">
+                <button onClick={copyLink} className="px-3 py-1 border rounded text-sm">Copy Link</button>
+                <button onClick={openControl} className="px-3 py-1 border rounded text-sm">Open Control</button>
+                <button onClick={resetSession} className="px-3 py-1 border rounded text-sm text-red-600">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-3xl mt-6">
         <h2 className="text-lg font-semibold mb-2">Existing Rooms</h2>
-        {loadingRooms ? (
-          <p className="text-gray-500">Loading rooms…</p>
-        ) : rooms.length === 0 ? (
-          <p className="text-gray-500">No rooms yet. Create one to get started.</p>
-        ) : (
-          <ul className="divide-y border rounded">
-            {rooms.map(r => (
-              <li key={r.id} className="p-3 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="font-mono text-sm truncate">{r.id}</div>
-                  <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
-                  {(r.team1Name || r.team2Name) && (
-                    <div className="text-sm mt-1">
-                      <span className="font-medium" style={{ color: r.team1Color || undefined }}>{r.team1Name || 'Team 1'}</span> {typeof r.team1Score === 'number' ? r.team1Score : '-'}
-                      <span className="mx-2">vs</span>
-                      <span className="font-medium" style={{ color: r.team2Color || undefined }}>{r.team2Name || 'Team 2'}</span> {typeof r.team2Score === 'number' ? r.team2Score : '-'}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <a className="px-3 py-1 border rounded text-sm" href={`#/control?room=${encodeURIComponent(r.id)}`}>Open Control</a>
-                  <a className="px-3 py-1 border rounded text-sm" href={`#/display?room=${encodeURIComponent(r.id)}`}>Open Display</a>
-                  <button className="px-3 py-1 border rounded text-sm text-red-600" onClick={() => deleteRoom(r.id)}>Delete</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="text-gray-500 text-sm">(Administrative listing)</p>
+        <div className="text-gray-500 mt-2">Use the top controls for quick sessions; the room list is left for advanced management.</div>
       </div>
     </div>
   );

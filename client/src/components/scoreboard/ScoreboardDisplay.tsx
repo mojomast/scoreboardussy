@@ -253,14 +253,14 @@ const ScoreboardDisplay: React.FC = () => {
             <div className="w-full flex flex-col items-center pb-4">
                 {/* Optional Footer - Apply dynamic styles */}
                 {currentFooter && (
-                    <p 
+                    <p
                         className="font-medium text-center text-gray-400 text-xl" // Base styles
                         style={{
                             color: footerTextColor || '#CCCCCC', // Default gray if not set
                             fontSize: `${footerTextSize || 1.25}rem` // Use state size (rem), default 1.25rem (text-xl)
                         }}
                     >
-                        {currentFooter}
+                        {currentFooter + ' ✨'}
                     </p>
                 )}
             </div>
