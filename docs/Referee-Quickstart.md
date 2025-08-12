@@ -34,11 +34,25 @@ Steps
   - {url}/timer with timer status updates (start/pause/stop, with durations)
 - The scoreboard will reflect team names/colors and timer state.
 
+—
+
+Audience Voting (optional)
+- Enable/Disable globally: POST http://<server-host>:3001/api/voting/enable { "enabled": true }
+- Start a vote: POST http://<server-host>:3001/api/voting/start
+- Audience cast votes (share links or a small page that POSTs):
+  - POST http://<server-host>:3001/api/voting/vote/team1
+  - POST http://<server-host>:3001/api/voting/vote/team2
+- End vote (optionally auto-award a point to the winner):
+  - POST http://<server-host>:3001/api/voting/end { "autoAward": true }
+- Check state: GET http://<server-host>:3001/api/voting/state
+
+Tip: You can show a QR on the display during active voting. If you have a QR generator at /api/voting/qr, surface it during a round break so the audience can scan and vote.
+
 Troubleshooting
 - No QR? Ensure the overlay toggle is enabled in Control and refresh the Display view.
 - Scan fails? Verify the display and server are on the same network and that the server URL is reachable from the phone.
 - Timer doesn’t move? Check that ENABLE_MATCH_TIMERS=true in the server environment and that the server logs show the /timer calls.
-- Wrong server URL in QR? Set VITE_SERVER_ORIGIN on the client build or ensure both client and server run on the same host.
+- Wrong server URL in QR? Set VITE_SERVER_ORIGIN on
 
 Notes
 - Tokens are short-lived and scoped to the matchId.

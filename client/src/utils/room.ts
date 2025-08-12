@@ -31,7 +31,9 @@ export function initRoomAuthFromUrl(cleanUrl: boolean = true) {
       setRoomToken(token);
       if (cleanUrl) {
         url.searchParams.delete('token');
-        window.history.replaceState({}, '', url.toString());
+        // Preserve the hash when updating the URL
+        const newUrl = url.pathname + url.search + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
       }
     }
   } catch {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, CopyButton, Group, Loader, Paper, Text, Title } from '@mantine/core';
+import { Box, Button, Group, Loader, Paper, Text, Title } from '@mantine/core';
 
 interface MonPacingQRPayload {
   url: string;
@@ -38,11 +38,8 @@ function getServerBase(): string {
   // Prefer explicit Vite var if provided
   const envOrigin = (import.meta as any).env?.VITE_SERVER_ORIGIN as string | undefined;
   if (envOrigin) return envOrigin.replace(/\/$/, '');
-  // In dev: client served from 5173, server on 3001 at the same hostname
-  const proto = window.location.protocol;
-  const host = window.location.hostname;
-  const port = '3001';
-  return `${proto}//${host}:${port}`;
+  // Default to same-origin as the served app (works behind reverse proxies / LB on port 80)
+  return window.location.origin.replace(/\/$/, '');
 }
 
 async function fetchQrPayload(matchId?: string): Promise<MonPacingQRPayload> {
@@ -69,6 +66,7 @@ export const MonPacingOverlay: React.FC<{ corner?: 'top-left' | 'top-right' | 'b
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     saveEnabled(enabled);
@@ -115,6 +113,30 @@ export const MonPacingOverlay: React.FC<{ corner?: 'top-left' | 'top-right' | 'b
     'bottom-right': 'bottom-2 right-2'
   }[corner];
 
+  async function copyJson() {
+    if (!payload) return;
+    const text = JSON.stringify(payload);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      setError('Failed to copy to clipboard');
+    }
+  }
+
   return (
     <div className={`absolute ${posClass} z-50`} style={{ pointerEvents: 'auto' }}>
       <Paper shadow="md" p="sm" radius="md" withBorder style={{ background: 'rgba(0,0,0,0.7)' }}>
@@ -135,13 +157,9 @@ export const MonPacingOverlay: React.FC<{ corner?: 'top-left' | 'top-right' | 'b
             <Title order={6} c="gray.0">Mon-Pacing Link</Title>
             {error && <Text c="red.4" size="xs">{error}</Text>}
             {payload && (
-              <CopyButton value={JSON.stringify(payload)} timeout={1500}>
-                {({ copied, copy }) => (
-                  <Button size="xs" onClick={copy} color={copied ? 'teal' : 'blue'} mt={4}>
-                    {copied ? 'Copied' : 'Copy JSON'}
-                  </Button>
-                )}
-              </CopyButton>
+              <Button size="xs" onClick={copyJson} color={copied ? 'teal' : 'blue'} mt={4}>
+                {copied ? 'Copied' : 'Copy JSON'}
+              </Button>
             )}
             <Button size="xs" variant="light" mt={4} onClick={() => window.location.reload()}>Refresh</Button>
           </Box>

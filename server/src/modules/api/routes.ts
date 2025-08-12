@@ -8,8 +8,16 @@ import {
     persistState
 } from '../state';
 
+import monPacingRouter from './interop/monpacing';
+import votingRouter from './voting';
+
 // Create and configure the router
 const router: Router = express.Router();
+
+// Mount interop routes for mon-pacing
+router.use('/interop/mon-pacing', monPacingRouter);
+// Voting endpoints (audience + control)
+router.use('/voting', votingRouter);
 
 // GET /api/state - Get current scoreboard state
 router.get('/state', (req: Request, res: Response) => {

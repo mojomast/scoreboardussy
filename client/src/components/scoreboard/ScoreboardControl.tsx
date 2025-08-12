@@ -198,7 +198,7 @@ const ScoreboardControl: React.FC = () => {
             <Paper shadow="xs" p="md">
                 <Title order={4} mb="sm">Audience Voting</Title>
                 <Group gap="sm">
-                    <Button onClick={async () => { await fetch('/api/voting/start', { method: 'POST' }); window.location.hash = '#/display'; }}>
+                    <Button onClick={async () => { await fetch('/api/voting/start', { method: 'POST' }); }}>
                         Start Vote (show QR)
                     </Button>
                     <Button color="green" onClick={async () => { await fetch('/api/voting/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoAward: true }) }); }}>

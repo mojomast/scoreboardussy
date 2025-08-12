@@ -126,3 +126,42 @@ dist-ssr
 # My specific ignores
 /server/dist
 /client/dist
+/server/build/
+/server/data/
+
+# Kubernetes dev assets (not for release)
+/k8s/
+/charts/
+/scripts/deploy-spot.ps1
+/scripts/deploy-spot-noninteractive.ps1
+/scripts/deploy-to-k8s*.ps1
+/scripts/simple-deploy.ps1
+/scripts/test-k8s-deployment.ps1
+/scripts/docker-build-and-push.ps1
+/scripts/build-with-loadbalancer.ps1
+/README-K8s.md
+/rackspace_spot_cli.md
+/K8S_DEPLOYMENT.md
+/AGENT_KUBERNETES.md
+
+# Kubeconfigs and cluster credentials
+*.kubeconfig
+.kube/
+**/kubeconfig*
+**/*.kubeconfig
+scoreboard*-kubeconfig.yaml
+loadbalancer-ip.txt
+
+# Local Docker artifacts
+*.tar
+*.img
+
+# Build artifacts and test data (development only)
+/build/
+/data/
+/test-data/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.swp

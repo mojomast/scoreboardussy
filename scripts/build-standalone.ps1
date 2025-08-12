@@ -27,8 +27,17 @@ if ($Rebuild) {
 Write-Host "Packaging Windows EXE (server)..." -ForegroundColor Cyan
 npm --prefix server run package:win
 
-# 3) Bundle client assets next to the EXE so static serving works
+# 2b) Move/copy EXE to repo build folder
+$serverExe = Join-Path $root 'server\\build\\ImprovScoreboard.exe'
 $buildDir = Join-Path $root 'build'
+New-Dir $buildDir
+if (Test-Path $serverExe) {
+  Copy-Item -Force $serverExe (Join-Path $buildDir 'ImprovScoreboard.exe')
+} else {
+  Write-Warning "Server EXE not found at $serverExe"
+}
+
+# 3) Bundle client assets next to the EXE so static serving works
 $clientOut = Join-Path $buildDir 'client\\dist'
 New-Dir (Join-Path $buildDir 'client')
 

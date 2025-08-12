@@ -70,6 +70,14 @@ class MatchStateManager {
     this.update(payload.matchId, { penalties });
   }
 
+  // Replace the full score values for both teams
+  public setScore(matchId: string, team1: number, team2: number) {
+    const current = this.matches.get(matchId);
+    if (!current) return;
+    const nextScore = { team1, team2 };
+    this.update(matchId, { score: nextScore });
+  }
+
   // Timers
   public startTimer(payload: TimerStartPayload): TimerState | null {
     const current = this.matches.get(payload.matchId);

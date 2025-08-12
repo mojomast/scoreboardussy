@@ -24,7 +24,7 @@ import {
 } from './rounds.types';
 
 // Server -> Client Events
-import { MatchState, TimerState } from './match.types';
+import type { MatchState, TimerState } from './match.types';
 
 export interface ServerToClientEvents {
     updateState: (state: ScoreboardState) => void;
@@ -41,9 +41,7 @@ import {
     MatchPenaltyPayload,
     MatchScorePayload,
     TimerSetPayload,
-    TimerStartPayload,
-    MatchState,
-    TimerState
+    TimerStartPayload
 } from './match.types';
 
 export interface ClientToServerEvents {

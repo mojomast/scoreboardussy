@@ -1,6 +1,6 @@
 {
   "name": "improvscoreboard-monorepo",
-  "version": "0.3.0",
+  "version": "0.5.7",
   "private": true,
   "description": "Real-time full-screen scoreboard web app",
   "scripts": {

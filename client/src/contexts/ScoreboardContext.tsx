@@ -161,6 +161,9 @@ export const ScoreboardProvider = ({ children }: { children: ReactNode }) => {
         if ('showEmojis' in s) base.showEmojis = s.showEmojis;
         if ('team1Emoji' in s) base.team1Emoji = s.team1Emoji;
         if ('team2Emoji' in s) base.team2Emoji = s.team2Emoji;
+        // Voting flags
+        if ('votingEnabled' in s) (base as any).votingEnabled = !!s.votingEnabled;
+        if ('votingActive' in s) (base as any).votingActive = !!s.votingActive;
 
         // Rounds: prefer unified server shape (s.rounds), fall back to legacy fields
         const roundsFromServer = s.rounds || {};
