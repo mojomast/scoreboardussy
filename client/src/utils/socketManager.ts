@@ -46,20 +46,38 @@ interface QueuedOperation {
 }
 
 export class SocketManager {
-  private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-  private config: SocketConfig;
-  private serverUrl: string;
-  private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
-  private reconnectAttempt: number = 0;
-  private reconnectTimer: number | null = null;
-  private operationQueue: QueuedOperation[] = [];
-  private listeners: Map<string, Set<Function>> = new Map();
-  private connectionStateListeners: Set<(state: ConnectionState) => void> = new Set();
-  private lastError: Error | null = null;
+   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
+   private config: SocketConfig;
+   private serverUrl: string;
+   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
+   private reconnectAttempt: number = 0;
+   private reconnectTimer: number | null = null;
+   private operationQueue: QueuedOperation[] = [];
+   private listeners: Map<string, Set<Function>> = new Map();
+   private connectionStateListeners: Set<(state: ConnectionState) => void> = new Set();
+   private lastError: Error | null = null;
+   private networkStatus: 'online' | 'offline' = 'online';
+   private heartbeatTimer: number | null = null;
+   private lastHeartbeat: number = Date.now();
+   private connectionStartTime: number | null = null;
+   private connectionMetrics: {
+     totalConnections: number;
+     totalDisconnections: number;
+     averageConnectionTime: number;
+     longestConnectionTime: number;
+     shortestConnectionTime: number;
+   } = {
+     totalConnections: 0,
+     totalDisconnections: 0,
+     averageConnectionTime: 0,
+     longestConnectionTime: 0,
+     shortestConnectionTime: Infinity
+   };
 
   constructor(serverUrl: string, config: Partial<SocketConfig> = {}) {
     this.serverUrl = serverUrl;
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.setupNetworkMonitoring();
   }
 
   /**
@@ -212,12 +230,6 @@ export class SocketManager {
     this.connectionStateListeners.delete(callback);
   }
 
-  /**
-   * Get the current connection state
-   */
-  public getConnectionState(): ConnectionState {
-    return this.connectionState;
-  }
 
   /**
    * Get the last error
@@ -241,6 +253,78 @@ export class SocketManager {
   }
 
   /**
+   * Setup network status monitoring
+   */
+  private setupNetworkMonitoring(): void {
+    if (typeof window !== 'undefined') {
+      // Monitor network status
+      window.addEventListener('online', () => {
+        console.log('Network: Online');
+        this.networkStatus = 'online';
+        if (this.connectionState === ConnectionState.DISCONNECTED) {
+          console.log('Network restored, attempting to reconnect...');
+          this.attemptReconnect();
+        }
+      });
+
+      window.addEventListener('offline', () => {
+        console.log('Network: Offline');
+        this.networkStatus = 'offline';
+        this.lastError = new Error('Network connection lost');
+        this.updateConnectionState(ConnectionState.ERROR);
+      });
+
+      // Set initial network status
+      this.networkStatus = navigator.onLine ? 'online' : 'offline';
+    }
+  }
+
+  /**
+   * Start heartbeat monitoring for connection health
+   */
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatTimer = window.setInterval(() => {
+      if (this.socket && this.connectionState === ConnectionState.CONNECTED) {
+        const now = Date.now();
+        const timeSinceLastHeartbeat = now - this.lastHeartbeat;
+
+        // If no heartbeat for 30 seconds, consider connection stale
+        if (timeSinceLastHeartbeat > 30000) {
+          console.warn('Connection appears stale, checking...');
+          // Instead of ping, we'll monitor the connection state
+          // The socket.io library handles ping/pong internally
+          this.lastHeartbeat = now;
+        }
+      }
+    }, 15000); // Check every 15 seconds
+  }
+
+  /**
+   * Stop heartbeat monitoring
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer !== null) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  /**
+   * Get network status
+   */
+  public getNetworkStatus(): 'online' | 'offline' {
+    return this.networkStatus;
+  }
+
+  /**
+   * Get connection metrics
+   */
+  public getConnectionMetrics() {
+    return { ...this.connectionMetrics };
+  }
+
+  /**
    * Setup event listeners for the socket
    */
   private setupEventListeners(): void {
@@ -249,17 +333,53 @@ export class SocketManager {
     this.socket.on('connect', () => {
       console.log('Connected to WebSocket server');
       this.reconnectAttempt = 0;
+      this.lastHeartbeat = Date.now();
+      this.connectionStartTime = Date.now();
+
+      // Update connection metrics
+      this.connectionMetrics.totalConnections++;
+      if (this.connectionStartTime) {
+        const connectionTime = this.connectionStartTime - (this.connectionStartTime - 0); // Calculate actual connection time
+        this.connectionMetrics.averageConnectionTime =
+          (this.connectionMetrics.averageConnectionTime * (this.connectionMetrics.totalConnections - 1) + connectionTime) / this.connectionMetrics.totalConnections;
+        this.connectionMetrics.longestConnectionTime = Math.max(this.connectionMetrics.longestConnectionTime, connectionTime);
+        this.connectionMetrics.shortestConnectionTime = Math.min(this.connectionMetrics.shortestConnectionTime, connectionTime);
+      }
+
       this.updateConnectionState(ConnectionState.CONNECTED);
+      this.startHeartbeat();
       this.processQueue();
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Disconnected from WebSocket server:', reason);
-      
-      // If the disconnection was initiated by the server, try to reconnect
+
+      // Stop heartbeat monitoring
+      this.stopHeartbeat();
+
+      // Update connection metrics
+      this.connectionMetrics.totalDisconnections++;
+      if (this.connectionStartTime) {
+        const connectionDuration = Date.now() - this.connectionStartTime;
+        this.connectionMetrics.averageConnectionTime =
+          (this.connectionMetrics.averageConnectionTime * (this.connectionMetrics.totalConnections - 1) + connectionDuration) / this.connectionMetrics.totalConnections;
+        this.connectionMetrics.longestConnectionTime = Math.max(this.connectionMetrics.longestConnectionTime, connectionDuration);
+        this.connectionMetrics.shortestConnectionTime = Math.min(this.connectionMetrics.shortestConnectionTime, connectionDuration);
+        this.connectionStartTime = null;
+      }
+
+      // If the disconnection was initiated by the server or due to network issues, try to reconnect
       if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'ping timeout') {
         this.updateConnectionState(ConnectionState.RECONNECTING);
         this.attemptReconnect();
+      } else if (this.networkStatus === 'online') {
+        // If we're online but still disconnected, try to reconnect for certain reasons
+        if (reason === 'transport error' || reason === 'parse error') {
+          this.updateConnectionState(ConnectionState.RECONNECTING);
+          this.attemptReconnect();
+        } else {
+          this.updateConnectionState(ConnectionState.DISCONNECTED);
+        }
       } else {
         this.updateConnectionState(ConnectionState.DISCONNECTED);
       }

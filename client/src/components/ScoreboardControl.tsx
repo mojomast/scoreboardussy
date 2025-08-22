@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { Modal } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { useScoreboard } from '../contexts/ScoreboardContext';
 import TeamControlPanel from './TeamControlPanel';
 import ScoreboardPreview from './ScoreboardPreview';
 import RoundControl from './rounds/RoundControl';
-import { 
-    Container, 
-    Tabs, 
-    TextInput, 
-    Button, 
-    ColorInput, 
-    Group, 
-    Stack, 
-    NumberInput, 
-    Text, 
-    Title, 
-    Paper, 
-    Slider, 
-    Checkbox, 
+import { ThemeToggle, ConnectionStatus, AccessibilitySettings } from './ui';
+import { IconAccessible } from '@tabler/icons-react';
+import {
+    Container,
+    Tabs,
+    TextInput,
+    Button,
+    ColorInput,
+    Group,
+    Stack,
+    NumberInput,
+    Text,
+    Title,
+    Paper,
+    Slider,
+    Checkbox,
     SegmentedControl,
-    Box,
-    SimpleGrid,
-    Switch
+    Box
 } from '@mantine/core';
 // Removed unused server type imports
 
@@ -67,23 +68,23 @@ const ScoreboardControl: React.FC = () => {
         }
     }, [state]);
 
-    // --- Input Handlers --- 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => setLocalTitleText(e.target.value);
-    const handleFooterChange = (e: React.ChangeEvent<HTMLInputElement>) => setLocalFooterText(e.target.value);
+    // --- Input Handlers (Memoized) ---
+    const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setLocalTitleText(e.target.value), []);
+    const handleFooterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setLocalFooterText(e.target.value), []);
 
-    // --- Update Button Handlers --- 
-    const handleUpdateTextStyles = () => {
+    // --- Update Button Handlers (Memoized) ---
+    const handleUpdateTextStyles = useCallback(() => {
         updateTextStyle({ target: 'title', color: localTitleColor, size: localTitleSize });
         updateTextStyle({ target: 'footer', color: localFooterColor, size: localFooterSize });
-    };
+    }, [updateTextStyle, localTitleColor, localTitleSize, localFooterColor, localFooterSize]);
 
-    const handleUpdateTitleClick = () => {
+    const handleUpdateTitleClick = useCallback(() => {
         updateText({ field: 'titleText', text: localTitleText });
-    };
+    }, [updateText, localTitleText]);
 
-    const handleUpdateFooterClick = () => {
+    const handleUpdateFooterClick = useCallback(() => {
         updateText({ field: 'footerText', text: localFooterText });
-    };
+    }, [updateText, localFooterText]);
 
     // Handler for when a logo file is selected
     const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,11 +134,9 @@ const ScoreboardControl: React.FC = () => {
 
     const isConnected = connectionState === 'connected';
 
-    // Dock settings side-by-side preference (persist locally)
-    const [dockSettings, setDockSettings] = useState<boolean>(() => {
-        try { return localStorage.getItem('dockSettings') === 'true'; } catch { return false; }
-    });
-    useEffect(() => { try { localStorage.setItem('dockSettings', String(dockSettings)); } catch {} }, [dockSettings]);
+    // Accessibility modal state
+    const [accessibilityModalOpen, setAccessibilityModalOpen] = useState(false);
+
 
     if (!state) {
         // Display a loading or disconnected message
@@ -152,8 +151,8 @@ const ScoreboardControl: React.FC = () => {
     const uploadButtonText = t('scoreboardControl.uploadLogoBtn');
     const logoManagementTitleText = t('scoreboardControl.logoManagementTitle', 'Logo Management');
 
-    // Extract Settings into reusable panel for docking or tab usage
-    const SettingsPanel: React.FC = () => (
+    // Extract Settings into reusable panel for docking or tab usage (Memoized)
+    const SettingsPanel: React.FC = memo(() => (
         <Stack gap="xl">
             {/* Language Selector */}
             <Box>
@@ -370,45 +369,84 @@ const ScoreboardControl: React.FC = () => {
                 {t('scoreboardControl.resetAllBtn')}
             </Button>
         </Stack>
-    );
+    ));
 
     return (
         <Container size="lg" py="xl">
-            <Group justify="space-between" align="center" mb="xl"> 
-                <Title order={2} ta="center">{t('scoreboardControl.title')}</Title>
-                <Group>
-                    <Switch
-                        checked={dockSettings}
-                        onChange={(e) => setDockSettings(e.currentTarget.checked)}
-                        label={t('scoreboardControl.dockSettings', 'Dock Settings')}
+            <Group justify="space-between" align="center" mb="xl" className="flex-col sm:flex-row gap-4 sm:gap-0">
+                <Title order={2} ta="center" className="text-xl sm:text-2xl">{t('scoreboardControl.title')}</Title>
+                <Group className="flex-wrap justify-center sm:justify-end gap-2">
+                    <ConnectionStatus />
+                    <Button
+                        variant="subtle"
                         size="sm"
-                    />
-                    <Button onClick={openScoreboardWindow}>
-                        {t('scoreboardControl.openDisplayBtn')} 
+                        onClick={() => setAccessibilityModalOpen(true)}
+                        leftSection={<IconAccessible size={16} />}
+                        className="touch-manipulation min-h-[44px] px-3"
+                        aria-label="Open accessibility settings"
+                    >
+                        Accessibility
+                    </Button>
+                    <ThemeToggle />
+                    <Button
+                        onClick={openScoreboardWindow}
+                        size="md"
+                        className="touch-manipulation min-h-[44px] px-4"
+                    >
+                        {t('scoreboardControl.openDisplayBtn')}
                     </Button>
                 </Group>
             </Group>
 
-            {/* Scoreboard Preview - Always visible */}
-            <Paper shadow="sm" p="md" mb="xl">
-                <Title order={3} ta="center" mb="md">
-                    {t('preview.title')}
-                </Title>
-                <ScoreboardPreview state={state} />
-            </Paper>
+            {/* Responsive Layout: Desktop side-by-side, Mobile stacked with touch-friendly spacing */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+                {/* Scoreboard Preview */}
+                <div className="order-1 lg:order-1">
+                    <Paper shadow="sm" p="md" className="touch-manipulation p-4 sm:p-6">
+                        <Title order={3} ta="center" mb="md" className="text-lg sm:text-xl lg:text-2xl">
+                            {t('preview.title')}
+                        </Title>
+                        <div className="overflow-x-auto">
+                            <ScoreboardPreview state={state} />
+                        </div>
+                    </Paper>
+                </div>
 
-            {/* Tabs for controls or docked layout */}
-            {!dockSettings ? (
-                <Tabs defaultValue="teams">
-                    <Tabs.List grow>
-                        <Tabs.Tab value="teams" disabled={!team1 || !team2}>{t('scoreboardControl.tabTeams')}</Tabs.Tab>
-                        <Tabs.Tab value="rounds">{t('scoreboardControl.tabRounds', 'Rounds')}</Tabs.Tab>
-                        <Tabs.Tab value="settings">{t('scoreboardControl.tabSettings')}</Tabs.Tab>
+                {/* Settings Panel - Desktop: Side-by-side, Mobile: Below */}
+                <div className="order-2 lg:order-2">
+                    <Paper shadow="sm" p="md" className="touch-manipulation p-4 sm:p-6">
+                        <Title order={3} ta="center" mb="md" className="text-lg sm:text-xl lg:text-2xl">
+                            {t('scoreboardControl.tabSettings')}
+                        </Title>
+                        <div className="space-y-4">
+                            <SettingsPanel />
+                        </div>
+                    </Paper>
+                </div>
+            </div>
+
+            {/* Teams and Rounds Controls - Mobile-optimized layout */}
+            <div className="mt-6">
+                <Tabs defaultValue="teams" className="w-full">
+                    <Tabs.List grow className="flex-col sm:flex-row mb-4">
+                        <Tabs.Tab
+                            value="teams"
+                            disabled={!team1 || !team2}
+                            className="touch-manipulation min-h-[48px] sm:min-h-[36px] px-4 py-3 sm:py-2"
+                        >
+                            {t('scoreboardControl.tabTeams')}
+                        </Tabs.Tab>
+                        <Tabs.Tab
+                            value="rounds"
+                            className="touch-manipulation min-h-[48px] sm:min-h-[36px] px-4 py-3 sm:py-2"
+                        >
+                            {t('scoreboardControl.tabRounds', 'Rounds')}
+                        </Tabs.Tab>
                     </Tabs.List>
 
                     {/* --- Teams Tab --- */}
                     <Tabs.Panel value="teams" pt="xs">
-                        <Group grow align="flex-start">
+                        <Group grow align="flex-start" className="flex-col lg:flex-row gap-4 lg:gap-6">
                             {team1 && (
                                 <TeamControlPanel
                                     key={i18n.language + '-team1'}
@@ -428,42 +466,32 @@ const ScoreboardControl: React.FC = () => {
 
                     {/* --- Rounds Tab --- */}
                     <Tabs.Panel value="rounds" pt="xs">
-                        <RoundControl />
-                    </Tabs.Panel>
-
-                    {/* --- Settings Tab --- */}
-                    <Tabs.Panel value="settings" pt="xs">
-                        <SettingsPanel />
+                        <div className="overflow-x-auto">
+                            <RoundControl />
+                        </div>
                     </Tabs.Panel>
                 </Tabs>
-            ) : (
-                <SimpleGrid cols={2} spacing="xl" mt="md">
-                    <div>
-                        <Tabs defaultValue="teams">
-                            <Tabs.List grow>
-                                <Tabs.Tab value="teams" disabled={!team1 || !team2}>{t('scoreboardControl.tabTeams')}</Tabs.Tab>
-                                <Tabs.Tab value="rounds">{t('scoreboardControl.tabRounds', 'Rounds')}</Tabs.Tab>
-                            </Tabs.List>
-                            <Tabs.Panel value="teams" pt="xs">
-                                <Group grow align="flex-start">
-                                    {team1 && (
-                                        <TeamControlPanel key={i18n.language + '-team1'} teamId="team1" team={team1} />
-                                    )}
-                                    {team2 && (
-                                        <TeamControlPanel key={i18n.language + '-team2'} teamId="team2" team={team2} />
-                                    )}
-                                </Group>
-                            </Tabs.Panel>
-                            <Tabs.Panel value="rounds" pt="xs">
-                                <RoundControl />
-                            </Tabs.Panel>
-                        </Tabs>
-                    </div>
-                    <div>
-                        <SettingsPanel />
-                    </div>
-                </SimpleGrid>
-            )}
+            </div>
+
+            {/* Accessibility Settings Modal */}
+            <Modal
+                opened={accessibilityModalOpen}
+                onClose={() => setAccessibilityModalOpen(false)}
+                title="Accessibility Settings"
+                size="lg"
+                centered
+                styles={{
+                    header: {
+                        backgroundColor: 'var(--mantine-color-dark-6)',
+                        borderBottom: '1px solid var(--mantine-color-dark-4)'
+                    },
+                    body: {
+                        padding: 0
+                    }
+                }}
+            >
+                <AccessibilitySettings onClose={() => setAccessibilityModalOpen(false)} />
+            </Modal>
 
         </Container>
     );

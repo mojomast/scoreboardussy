@@ -112,16 +112,18 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center gap-4 p-6">
-      <h1 className="text-2xl font-bold">Improv Scoreboard ✨</h1>
-      <p className="text-gray-600">Quick start: Join (creates a private session on this device). Share the session link or QR to let others join.</p>
+    <div className="min-h-screen flex flex-col items-center gap-4 p-4 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-center">Improv Scoreboard ✨</h1>
+      <p className="text-gray-600 text-center max-w-md text-sm sm:text-base">
+        Quick start: Join (creates a private session on this device). Share the session link or QR to let others join.
+      </p>
 
-      <div className="flex gap-3 mt-3">
+      <div className="flex flex-col sm:flex-row gap-3 mt-3 w-full max-w-md">
         {!currentRoomId ? (
           <button
             onClick={createSession}
             disabled={busy}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded disabled:opacity-50 touch-manipulation min-h-[48px] text-base sm:text-sm"
           >
             {busy ? 'Creating…' : 'Join (Create Session)'}
           </button>
@@ -129,20 +131,20 @@ const Home: React.FC = () => {
           <>
             <button
               onClick={openControl}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded touch-manipulation min-h-[48px] text-base sm:text-sm flex-1"
             >
               Open Control
             </button>
             <button
               onClick={copyLink}
-              className="px-4 py-2 rounded border"
+              className="px-6 py-3 rounded border touch-manipulation min-h-[48px] text-base sm:text-sm flex-1"
             >
               Copy Link
             </button>
             <button
               onClick={resetSession}
               disabled={busy}
-              className="px-4 py-2 rounded border text-red-600"
+              className="px-6 py-3 rounded border text-red-600 touch-manipulation min-h-[48px] text-base sm:text-sm"
             >
               {busy ? 'Resetting…' : 'Reset Session'}
             </button>
@@ -153,23 +155,46 @@ const Home: React.FC = () => {
       {error && <p className="text-red-600 mt-2">{error}</p>}
 
       {currentRoomId && (
-        <div className="w-full max-w-md mt-6 p-4 border rounded shadow-sm bg-white">
-          <div className="flex items-center justify-between mb-2">
+        <div className="w-full max-w-md mt-6 p-4 sm:p-6 border rounded shadow-sm bg-white dark:bg-gray-800 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
             <div>
-              <div className="text-sm text-gray-500">Current Session ID</div>
-              <div className="font-mono text-sm truncate">{currentRoomId}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Current Session ID</div>
+              <div className="font-mono text-sm truncate dark:text-gray-200">{currentRoomId}</div>
             </div>
-            <div className="text-right text-xs text-gray-400">Cached on this device</div>
+            <div className="text-right text-xs text-gray-400 dark:text-gray-500">Cached on this device</div>
           </div>
 
-          <div className="mt-3 flex gap-3 items-center">
-            <img src={qrFor(buildShareLink(currentRoomId, currentToken || undefined))} alt="Session QR" style={{ width: 140, height: 140 }} className="rounded" />
-            <div className="flex-1">
-              <div className="text-sm mb-2 break-words">{buildShareLink(currentRoomId, currentToken || undefined)}</div>
-              <div className="flex gap-2">
-                <button onClick={copyLink} className="px-3 py-1 border rounded text-sm">Copy Link</button>
-                <button onClick={openControl} className="px-3 py-1 border rounded text-sm">Open Control</button>
-                <button onClick={resetSession} className="px-3 py-1 border rounded text-sm text-red-600">Reset</button>
+          <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+            <div className="flex-shrink-0">
+              <img
+                src={qrFor(buildShareLink(currentRoomId, currentToken || undefined))}
+                alt="Session QR"
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-lg shadow-md"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm mb-3 break-words dark:text-gray-200 text-center sm:text-left">
+                {buildShareLink(currentRoomId, currentToken || undefined)}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  onClick={copyLink}
+                  className="px-4 py-2 border rounded touch-manipulation min-h-[40px] text-sm dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  Copy Link
+                </button>
+                <button
+                  onClick={openControl}
+                  className="px-4 py-2 border rounded touch-manipulation min-h-[40px] text-sm dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  Open Control
+                </button>
+                <button
+                  onClick={resetSession}
+                  className="px-4 py-2 border rounded touch-manipulation min-h-[40px] text-sm text-red-600 dark:text-red-400"
+                >
+                  Reset
+                </button>
               </div>
             </div>
           </div>

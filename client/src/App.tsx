@@ -1,10 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { MantineProvider } from '@mantine/core';
 import { ScoreboardProvider } from './contexts/ScoreboardContext';
-import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
-import ScoreboardControl from './components/scoreboard/ScoreboardControl';
-import Home from './components/Home';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AccessibilityProvider } from './components/ui/AccessibilityProvider';
+
+// Lazy load components for better performance
+const Home = lazy(() => import('./components/Home'));
+const ScoreboardDisplay = lazy(() => import('./components/scoreboard/ScoreboardDisplay'));
+const ScoreboardControl = lazy(() => import('./components/scoreboard/ScoreboardControl'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
+    <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+  </div>
+);
 
 // Import Mantine core styles
 import '@mantine/core/styles.css';
@@ -28,30 +40,36 @@ function App() {
 
   return (
     <MantineProvider>
-      <ScoreboardProvider>
-        {view === '#/home' ? (
-          <Home />
-        ) : view === '#/display' ? (
-          <ScoreboardDisplay />
-        ) : view === '#/control' ? (
-          <ScoreboardControl />
-        ) : (
-          <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center">
-            <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
-              {t('app.unknownView')}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              <Trans
-                i18nKey="app.unknownViewMsg"
-                components={[
-                  <a href="#/display" className="text-blue-500 hover:underline">{t('app.displayLinkText')}</a>,
-                  <a href="#/control" className="text-blue-500 hover:underline">{t('app.controlLinkText')}</a>
-                ]}
-              />
-            </p>
-          </div>
-        )}
-      </ScoreboardProvider>
+      <AccessibilityProvider>
+        <ThemeProvider>
+          <ScoreboardProvider>
+            <Suspense fallback={<LoadingFallback />}>
+            {view === '#/home' ? (
+              <Home />
+            ) : view === '#/display' ? (
+              <ScoreboardDisplay />
+            ) : view === '#/control' ? (
+              <ScoreboardControl />
+            ) : (
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center">
+                <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
+                  {t('app.unknownView')}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400">
+                  <Trans
+                    i18nKey="app.unknownViewMsg"
+                    components={[
+                      <a href="#/display" className="text-blue-500 hover:underline">{t('app.displayLinkText')}</a>,
+                      <a href="#/control" className="text-blue-500 hover:underline">{t('app.controlLinkText')}</a>
+                    ]}
+                  />
+                </p>
+              </div>
+            )}
+          </Suspense>
+        </ScoreboardProvider>
+      </ThemeProvider>
+      </AccessibilityProvider>
     </MantineProvider>
   );
 }
