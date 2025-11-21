@@ -84,6 +84,22 @@ io.use((socket, next) => {
 
 // Import template initialization function
 import { initializeDefaultTemplates } from './modules/state/rounds/templates';
+import { cleanupExpiredRooms, getAllRooms } from './modules/rooms/store';
+
+// Health check endpoint
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Stats endpoint
+app.get('/api/stats', (_req, res) => {
+    const rooms = getAllRooms();
+    res.json({
+        roomCount: rooms.length,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Load persisted state if available
 (async () => {
@@ -96,12 +112,22 @@ import { initializeDefaultTemplates } from './modules/state/rounds/templates';
         console.error('❌ Error loading persisted state:', error);
         console.log('⚠️ Continuing with default state');
     }
-    
+
     // Initialize socket handlers after state is loaded
     initializeSocketHandlers(io);
-    
+
     // Initialize default templates (only if not already in loaded state)
     initializeDefaultTemplates();
+
+    // Start room cleanup cron job (runs every 15 minutes)
+    const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+    setInterval(() => {
+        const cleaned = cleanupExpiredRooms();
+        if (cleaned > 0) {
+            console.log(`🧹 Cleaned up ${cleaned} expired room(s)`);
+        }
+    }, CLEANUP_INTERVAL_MS);
+    console.log('🧹 Room cleanup cron job started (15 min interval)');
 })();
 
 // Start the server
@@ -112,7 +138,7 @@ server.listen(listenOptions, () => {
     const address = listenOptions.host || 'localhost';
     console.log(`🚀 Server listening at http://${address}:${port}`);
     console.log(`   WebSocket connections enabled.`);
-    
+
     if (isProd) {
         console.log(`   Serving frontend from client/dist`);
         console.log(`   Accepting connections from network.`);

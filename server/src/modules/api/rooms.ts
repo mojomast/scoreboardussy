@@ -1,21 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { getState } from '../state';
-
-interface Room {
-  id: string;
-  createdAt: string;
-  refereeToken: string;
-  // Snapshot of team names, colors, and scores at last update (for listing)
-  team1Name?: string;
-  team2Name?: string;
-  team1Color?: string;
-  team2Color?: string;
-  team1Score?: number;
-  team2Score?: number;
-}
-
-const rooms: Room[] = [];
+import { createRoom, findRoomByCode, deleteRoom, updateRoomActivity } from '../rooms/store';
+import QRCode from 'qrcode';
 
 function getBaseUrl(req: Request): string {
   // Prefer PUBLIC_URL if provided
@@ -28,67 +13,151 @@ function getBaseUrl(req: Request): string {
 
 const router = Router();
 
-// List rooms with basic metadata
-router.get('/', (_req: Request, res: Response) => {
-  // Pull current colors and scores from global state so list reflects live data
-  const s = getState() as any;
-  const currentTeam1Color = s?.team1?.color;
-  const currentTeam2Color = s?.team2?.color;
-  const currentTeam1Score = typeof s?.team1?.score === 'number' ? s.team1.score : undefined;
-  const currentTeam2Score = typeof s?.team2?.score === 'number' ? s.team2.score : undefined;
-
-  res.json({ rooms: rooms.map(r => ({
-    id: r.id,
-    createdAt: r.createdAt,
-    team1Name: r.team1Name,
-    team2Name: r.team2Name,
-    team1Color: currentTeam1Color ?? r.team1Color,
-    team2Color: currentTeam2Color ?? r.team2Color,
-    team1Score: currentTeam1Score ?? r.team1Score,
-    team2Score: currentTeam2Score ?? r.team2Score,
-  })) });
-});
-
-// Create room
+// Create new room
 router.post('/', (req: Request, res: Response) => {
-  const id = uuidv4();
-  const refereeToken = uuidv4();
-  const createdAt = new Date().toISOString();
+  try {
+    const room = createRoom();
+    const base = getBaseUrl(req);
 
-  // Initialize team snapshot from current global state (best-effort)
-  const s = getState();
-  const room: Room = {
-    id,
-    createdAt,
-    refereeToken,
-    team1Name: s.team1?.name,
-    team2Name: s.team2?.name,
-    team1Color: s.team1?.color,
-    team2Color: s.team2?.color,
-    team1Score: s.team1?.score,
-    team2Score: s.team2?.score,
-  };
-  rooms.unshift(room);
+    // Generate URLs with room code
+    const controlUrl = `${base}/room/${room.code}/control`;
+    const displayUrl = `${base}/room/${room.code}`;
 
-  const base = getBaseUrl(req);
-  const controlUrl = `${base}/#/control?room=${encodeURIComponent(id)}`;
-  const displayUrl = `${base}/#/display?room=${encodeURIComponent(id)}`;
-
-  res.json({
-    id,
-    createdAt,
-    urls: { control: controlUrl, display: displayUrl },
-    tokens: { referee: refereeToken }
-  });
+    res.json({
+      id: room.id,
+      code: room.code,
+      urls: {
+        control: controlUrl,
+        display: displayUrl
+      },
+      createdAt: new Date(room.createdAt).toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating room:', error);
+    res.status(500).json({ error: 'Failed to create room' });
+  }
 });
 
-// Delete a room by id
-router.delete('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const idx = rooms.findIndex(r => r.id === id);
-  if (idx === -1) return res.status(404).json({ error: 'Room not found' });
-  rooms.splice(idx, 1);
-  res.json({ success: true });
+// Get room info by code (public endpoint for QR scans)
+router.get('/:code/info', (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const room = findRoomByCode(code.toUpperCase());
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    // Update activity
+    updateRoomActivity(room.id);
+
+    const base = getBaseUrl(req);
+    const controlUrl = `${base}/room/${room.code}/control`;
+    const displayUrl = `${base}/room/${room.code}`;
+
+    res.json({
+      code: room.code,
+      urls: {
+        control: controlUrl,
+        display: displayUrl
+      },
+      createdAt: new Date(room.createdAt).toISOString()
+    });
+  } catch (error) {
+    console.error('Error getting room info:', error);
+    res.status(500).json({ error: 'Failed to get room info' });
+  }
+});
+
+// Generate QR code for room (returns PNG image)
+router.get('/:code/qr', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const { type = 'display' } = req.query;
+
+    const room = findRoomByCode(code.toUpperCase());
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    const base = getBaseUrl(req);
+    const url = type === 'control'
+      ? `${base}/room/${room.code}/control`
+      : `${base}/room/${room.code}`;
+
+    // Generate QR code as PNG buffer
+    const qrBuffer = await QRCode.toBuffer(url, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 400,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(qrBuffer);
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+});
+
+// Generate QR code data URL (for embedding in frontend)
+router.get('/:code/qr-data', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const { type = 'display' } = req.query;
+
+    const room = findRoomByCode(code.toUpperCase());
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    const base = getBaseUrl(req);
+    const url = type === 'control'
+      ? `${base}/room/${room.code}/control`
+      : `${base}/room/${room.code}`;
+
+    // Generate QR code as data URL
+    const qrDataUrl = await QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 400
+    });
+
+    res.json({
+      dataUrl: qrDataUrl,
+      url: url,
+      type: type
+    });
+  } catch (error) {
+    console.error('Error generating QR data URL:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+});
+
+// Delete room by code
+router.delete('/:code', (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const room = findRoomByCode(code.toUpperCase());
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    deleteRoom(room.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    res.status(500).json({ error: 'Failed to delete room' });
+  }
 });
 
 export default router;
+

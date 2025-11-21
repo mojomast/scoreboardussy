@@ -1,188 +1,207 @@
-import React, { useEffect, useState } from 'react';
-import {
-  getRoomToken,
-  setRoomToken,
-  clearRoomToken,
-  getRoomId,
-  setRoomId,
-  clearRoomId,
-} from '@/utils/room';
-
-const buildShareLink = (roomId: string, token?: string) => {
-  const base = window.location.origin;
-  const url = new URL(`${base}/#/control`);
-  url.searchParams.set('room', roomId);
-  if (token) url.searchParams.set('token', token);
-  return url.toString();
-};
-
-const qrFor = (text: string) =>
-  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
-
-const isLikelyIpHostname = (host: string) => {
-  // matches IPv4 and plain numeric host
-  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) || host === 'localhost';
-};
+import React, { useState } from 'react';
 
 const Home: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
-  const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [joinCode, setJoinCode] = useState('');
 
-  useEffect(() => {
-    try {
-      const token = getRoomToken();
-      const room = getRoomId();
-      if (token) setCurrentToken(token);
-      if (room) setCurrentRoomId(room);
-
-      // If no cached session and site was opened by direct IP or localhost, auto-create session
-      if (!room && !token) {
-        const host = window.location.hostname;
-        if (isLikelyIpHostname(host)) {
-          // Delay slightly to avoid blocking render
-          setTimeout(() => {
-            void createSession();
-          }, 250);
-        }
-      }
-    } catch {}
-  }, []);
-
-  async function createSession() {
+  async function createRoom() {
     try {
       setBusy(true);
       setError(null);
       const res = await fetch('/api/rooms', { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const id: string = data.id;
-      const token: string | undefined = data?.tokens?.referee;
-      if (token) {
-        setRoomToken(token);
-        setCurrentToken(token);
-      }
-      if (id) {
-        setRoomId(id);
-        setCurrentRoomId(id);
-      }
+      setRoomCode(data.code);
     } catch (e: any) {
-      setError(e?.message || 'Failed to create session');
+      setError(e?.message || 'Failed to create room');
     } finally {
       setBusy(false);
     }
   }
 
-  async function resetSession() {
-    try {
-      setBusy(true);
-      setError(null);
-      const id = currentRoomId || getRoomId();
-      if (id) {
-        try {
-          await fetch(`/api/rooms/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        } catch {}
-      }
-      clearRoomToken();
-      clearRoomId();
-      setCurrentRoomId(null);
-      setCurrentToken(null);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to reset session');
-    } finally {
-      setBusy(false);
-    }
+  function joinRoom() {
+    if (!joinCode.trim()) return;
+    const code = joinCode.trim().toUpperCase();
+    window.location.href = `#/room/${code}`;
   }
 
-  const copyLink = async () => {
-    if (!currentRoomId) return;
-    const link = buildShareLink(currentRoomId, currentToken || undefined);
-    try {
-      await navigator.clipboard.writeText(link);
-    } catch {
-      setError('Copy failed - your browser may block clipboard access');
-    }
-  };
+  function goToDisplay() {
+    if (!roomCode) return;
+    window.location.href = `#/room/${roomCode}`;
+  }
 
-  const openControl = () => {
-    if (!currentRoomId) return;
-    const link = buildShareLink(currentRoomId, currentToken || undefined);
-    window.open(link, '_blank', 'noopener,noreferrer');
-  };
+  function goToControl() {
+    if (!roomCode) return;
+    window.location.href = `#/room/${roomCode}/control`;
+  }
+
+  const displayUrl = roomCode ? `${window.location.origin}/#/room/${roomCode}` : '';
+  const controlUrl = roomCode ? `${window.location.origin}/#/room/${roomCode}/control` : '';
 
   return (
-    <div className="min-h-screen flex flex-col items-center gap-4 p-6">
-      <h1 className="text-2xl font-bold">Improv Scoreboard ✨</h1>
-      <p className="text-gray-600">Quick start: Join (creates a private session on this device). Share the session link or QR to let others join.</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-indigo-950 flex flex-col items-center justify-center p-6">
+      <div className="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+            🏆 Scoreboardussy
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Real-time improv scoreboard for your shows
+          </p>
+        </div>
 
-      <div className="flex gap-3 mt-3">
-        {!currentRoomId ? (
-          <button
-            onClick={createSession}
-            disabled={busy}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded disabled:opacity-50"
-          >
-            {busy ? 'Creating…' : 'Join (Create Session)'}
-          </button>
+        {!roomCode ? (
+          /* Create/Join Room View */
+          <div className="space-y-6">
+            {/* Create New Room */}
+            <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-xl">
+              <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-white">
+                Create New Scoreboard
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Start a new scoreboard session. You'll get a unique room code to share.
+              </p>
+              <button
+                onClick={createRoom}
+                disabled={busy}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
+              >
+                {busy ? '⏳ Creating...' : '✨ Create New Room'}
+              </button>
+            </div>
+
+            {/* Join Existing Room */}
+            <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-xl">
+              <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-white">
+                Join Existing Room
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Have a room code? Enter it below to join.
+              </p>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="Enter room code (e.g., ABC123)"
+                  maxLength={6}
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-lg uppercase tracking-wider focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
+                />
+                <button
+                  onClick={joinRoom}
+                  disabled={!joinCode.trim()}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+                >
+                  Join
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-red-600 dark:text-red-400 text-sm">❌ {error}</p>
+              </div>
+            )}
+          </div>
         ) : (
-          <>
+          /* Room Created View */
+          <div className="space-y-6">
+            {/* Success Message */}
+            <div className="text-center p-6 bg-green-50 dark:bg-green-900/30 rounded-xl border-2 border-green-200 dark:border-green-800">
+              <div className="text-5xl mb-2">🎉</div>
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-300 mb-2">
+                Room Created!
+              </h2>
+              <div className="text-sm text-green-700 dark:text-green-400 mb-4">
+                Your room code is:
+              </div>
+              <div className="inline-block px-8 py-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <div className="font-mono text-5xl font-bold tracking-widest text-blue-600 dark:text-blue-400">
+                  {roomCode}
+                </div>
+              </div>
+            </div>
+
+            {/* QR Codes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Display QR */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
+                <h3 className="font-semibold mb-3 text-gray-800 dark:text-white">
+                  📺 Display View
+                </h3>
+                <img
+                  src={`/api/rooms/${roomCode}/qr?type=display`}
+                  alt="Display QR Code"
+                  className="w-48 h-48 mx-auto mb-3 rounded-lg bg-white p-2"
+                />
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">
+                  {displayUrl}
+                </p>
+                <button
+                  onClick={goToDisplay}
+                  className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Open Display
+                </button>
+              </div>
+
+              {/* Control QR */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl text-center">
+                <h3 className="font-semibold mb-3 text-gray-800 dark:text-white">
+                  🎮 Control Panel
+                </h3>
+                <img
+                  src={`/api/rooms/${roomCode}/qr?type=control`}
+                  alt="Control QR Code"
+                  className="w-48 h-48 mx-auto mb-3 rounded-lg bg-white p-2"
+                />
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">
+                  {controlUrl}
+                </p>
+                <button
+                  onClick={goToControl}
+                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Open Control
+                </button>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-800">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                📱 How to use:
+              </h3>
+              <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+                <li>• <strong>Display</strong>: For projector/audience screen (shows scores)</li>
+                <li>• <strong>Control</strong>: For referee device (manages the game)</li>
+                <li>• Scan QR codes with your phone to access on other devices</li>
+                <li>• Room stays active for 2 hours after last activity</li>
+              </ul>
+            </div>
+
+            {/* Create Another */}
             <button
-              onClick={openControl}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+              onClick={() => { setRoomCode(null); setError(null); }}
+              className="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Open Control
+              ← Create Another Room
             </button>
-            <button
-              onClick={copyLink}
-              className="px-4 py-2 rounded border"
-            >
-              Copy Link
-            </button>
-            <button
-              onClick={resetSession}
-              disabled={busy}
-              className="px-4 py-2 rounded border text-red-600"
-            >
-              {busy ? 'Resetting…' : 'Reset Session'}
-            </button>
-          </>
+          </div>
         )}
       </div>
 
-      {error && <p className="text-red-600 mt-2">{error}</p>}
-
-      {currentRoomId && (
-        <div className="w-full max-w-md mt-6 p-4 border rounded shadow-sm bg-white">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <div className="text-sm text-gray-500">Current Session ID</div>
-              <div className="font-mono text-sm truncate">{currentRoomId}</div>
-            </div>
-            <div className="text-right text-xs text-gray-400">Cached on this device</div>
-          </div>
-
-          <div className="mt-3 flex gap-3 items-center">
-            <img src={qrFor(buildShareLink(currentRoomId, currentToken || undefined))} alt="Session QR" style={{ width: 140, height: 140 }} className="rounded" />
-            <div className="flex-1">
-              <div className="text-sm mb-2 break-words">{buildShareLink(currentRoomId, currentToken || undefined)}</div>
-              <div className="flex gap-2">
-                <button onClick={copyLink} className="px-3 py-1 border rounded text-sm">Copy Link</button>
-                <button onClick={openControl} className="px-3 py-1 border rounded text-sm">Open Control</button>
-                <button onClick={resetSession} className="px-3 py-1 border rounded text-sm text-red-600">Reset</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="w-full max-w-3xl mt-6">
-        <h2 className="text-lg font-semibold mb-2">Existing Rooms</h2>
-        <p className="text-gray-500 text-sm">(Administrative listing)</p>
-        <div className="text-gray-500 mt-2">Use the top controls for quick sessions; the room list is left for advanced management.</div>
+      {/* Footer */}
+      <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+        Scoreboardussy v0.5.7 • Hosted at scoreboard.ussy.host
       </div>
     </div>
   );
 };
 
 export default Home;
+

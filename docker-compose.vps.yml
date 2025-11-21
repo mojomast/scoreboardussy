@@ -7,13 +7,17 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET:-please-change-me}
-      - PUBLIC_URL=${PUBLIC_URL:-https://yourdomain.com}
+      - PUBLIC_URL=https://scoreboard.ussy.host
+      - JWT_SECRET=${JWT_SECRET:-please-change-me-in-production}
+      - ROOM_TTL_HOURS=${ROOM_TTL_HOURS:-2}
+      - MAX_ROOMS=${MAX_ROOMS:-100}
       # - DATABASE_URL=${DATABASE_URL}
       # - REDIS_URL=${REDIS_URL}
     depends_on:
       - caddy
     restart: unless-stopped
+    volumes:
+      - scoreboard_data:/app/server/data
 
   caddy:
     image: caddy:2
@@ -22,6 +26,8 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
   # Optional Redis (enable when moving to M2)
@@ -32,4 +38,8 @@ services:
   #   restart: unless-stopped
 
 volumes:
+  scoreboard_data:
+  caddy_data:
+  caddy_config:
   # redis_data:
+

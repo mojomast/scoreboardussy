@@ -1,9 +1,9 @@
 {
-	# Optional: email for ACME/Lets Encrypt
+	# Optional: email for ACME/Let's Encrypt
 	# email you@example.com
 }
 
-yourdomain.com {
+scoreboard.ussy.host {
 	encode gzip
 	# Proxy to Node app service (docker compose service name: web)
 	reverse_proxy web:3001
