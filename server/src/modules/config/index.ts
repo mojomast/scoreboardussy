@@ -3,6 +3,7 @@ import express, { Express } from 'express';
 import cors, { CorsOptions } from 'cors';
 import path from 'path';
 import fs from 'fs';
+import rateLimit from 'express-rate-limit';
 
 // Define allowed origins for CORS (augmented by env in production)
 const allowedOrigins = [
@@ -91,6 +92,28 @@ export const configureStaticServing = (app: Express, isProduction: boolean = fal
 export const getListenOptions = (port: number, isProduction: boolean = false) => ({
     port,
     host: isProduction ? '0.0.0.0' : undefined, // Listen on all interfaces in prod
+});
+
+// Global rate limiter: 100 requests per minute per IP
+export const globalRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => {
+        res.status(429).json({ error: 'Too many requests, please try again later.' });
+    },
+});
+
+// Stricter rate limiter for room creation: 10 requests per minute per IP
+export const roomCreationRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => {
+        res.status(429).json({ error: 'Room creation rate limit exceeded. Please try again later.' });
+    },
 });
 
 // Configure express middleware

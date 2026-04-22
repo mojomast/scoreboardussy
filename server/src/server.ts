@@ -14,7 +14,9 @@ import {
     configureMiddleware,
     configureLogging,
     getListenOptions,
-    isProduction
+    isProduction,
+    globalRateLimiter,
+    roomCreationRateLimiter
 } from './modules/config';
 import { initializeSocketHandlers } from './modules/socket/handlers';
 import apiRoutes from './modules/api/routes';
@@ -39,9 +41,10 @@ const io = new Server<
 
 // Configure Express middleware and settings
 configureMiddleware(app);
+app.use(globalRateLimiter);
 
 // Mount API routes
-app.use('/api/rooms', roomRoutes);
+app.use('/api/rooms', roomCreationRateLimiter, roomRoutes);
 app.use('/api', apiRoutes);
 
 // Configure static file serving and environment
