@@ -1,0 +1,46 @@
+[Unit]
+Description=Improv Scoreboard Server (Instance %i)
+Documentation=https://github.com/mojomast/scoreboardussy
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=mojo
+Group=mojo
+WorkingDirectory=/home/mojo/projects/scoreboardussy/scoreboardussy/server
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=300%i
+Environment=PUBLIC_URL=https://scoreboard.ussyco.de
+Environment=LOG_LEVEL=info
+
+# Load additional env vars from file
+EnvironmentFile=/home/mojo/projects/scoreboardussy/scoreboardussy/server/.env
+
+# Node process
+ExecStart=/usr/bin/node dist/server.js
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=scoreboard-%i
+
+[Install]
+WantedBy=multi-user.target

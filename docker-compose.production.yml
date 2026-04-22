@@ -1,0 +1,127 @@
+# Production Docker Compose
+# For deploying on a single VPS with scoreboard.ussyco.de
+
+version: "3.9"
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: scoreboard-postgres
+    environment:
+      POSTGRES_USER: scoreboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
+      POSTGRES_DB: scoreboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/prisma/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scoreboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: scoreboard-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js API server (3 instances for load balancing)
+  api-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scoreboard-api-1
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - PUBLIC_URL=https://scoreboard.ussyco.de
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  api-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scoreboard-api-2
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - PUBLIC_URL=https://scoreboard.ussyco.de
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+    ports:
+      - "127.0.0.1:3002:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  api-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scoreboard-api-3
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - PUBLIC_URL=https://scoreboard.ussyco.de
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+    ports:
+      - "127.0.0.1:3003:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+volumes:
+  postgres_data:
+  redis_data:

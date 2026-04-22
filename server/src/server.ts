@@ -2,6 +2,7 @@ import { logger } from './modules/config/logger';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
+import { prisma } from './modules/db';
 import {
     ClientToServerEvents,
     ServerToClientEvents,
@@ -90,9 +91,41 @@ io.use((socket, next) => {
 import { initializeDefaultTemplates } from './modules/state/rounds/templates';
 import { cleanupExpiredRooms, getAllRooms } from './modules/rooms/store';
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint - checks all dependencies
+app.get('/health', async (_req, res) => {
+    const checks: Record<string, boolean> = {};
+    let status = 200;
+
+    // Check database connectivity
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        checks.database = true;
+    } catch {
+        checks.database = false;
+        status = 503;
+    }
+
+    // Check Redis if configured
+    if (process.env.REDIS_URL) {
+        try {
+            const { default: Redis } = await import('ioredis');
+            const redis = new Redis(process.env.REDIS_URL, { connectTimeout: 2000 });
+            await redis.ping();
+            redis.disconnect();
+            checks.redis = true;
+        } catch {
+            checks.redis = false;
+            status = 503;
+        }
+    }
+
+    res.status(status).json({
+        status: status === 200 ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: process.env.npm_package_version || 'unknown',
+        checks,
+    });
 });
 
 // Stats endpoint
@@ -153,13 +186,50 @@ server.listen(listenOptions, () => {
 });
 
 // Handle server shutdown gracefully
-const shutdown = () => {
-    logger.info('\nShutting down server...');
-    server.close(() => {
-        logger.info('Server shutdown complete.');
+const shutdown = async () => {
+    logger.info('Shutting down server gracefully...');
+    
+    // Stop accepting new connections
+    server.close(async () => {
+        logger.info('HTTP server closed');
+        
+        // Disconnect from database
+        try {
+            await prisma.$disconnect();
+            logger.info('Database disconnected');
+        } catch (err) {
+            logger.error('Error disconnecting from database:', err);
+        }
+        
+        // Disconnect from Redis if connected
+        if (process.env.REDIS_URL) {
+            try {
+                const { disconnectRedis } = await import('./modules/redis');
+                await disconnectRedis();
+                logger.info('Redis disconnected');
+            } catch {
+                // Redis might not be initialized
+            }
+        }
+        
+        logger.info('Shutdown complete');
         process.exit(0);
     });
+    
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+        logger.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 30000);
 };
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception:', err);
+    shutdown();
+});
+process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled rejection:', reason);
+    shutdown();
+});

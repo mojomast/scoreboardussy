@@ -1,0 +1,68 @@
+# Production Caddyfile for scoreboard.ussyco.de
+# Place this file at /etc/caddy/Caddyfile or use with `caddy run`
+
+{
+	# Global options
+	email admin@ussyco.de
+	auto_https off
+}
+
+# Main domain - serves the React app and API
+scoreboard.ussyco.de {
+	# Enable compression
+	encode gzip zstd
+
+	# Security headers
+	header {
+		# Prevent clickjacking
+		X-Frame-Options "SAMEORIGIN"
+		# XSS protection
+		X-Content-Type-Options "nosniff"
+		# Referrer policy
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Remove Server header
+		-Server
+	}
+
+	# Handle API routes
+	handle_path /api/* {
+		reverse_proxy localhost:3001 localhost:3002 localhost:3003 {
+			# Sticky sessions for WebSocket support
+			lb_policy ip_hash
+		}
+	}
+
+	# Handle Socket.IO
+	handle_path /socket.io/* {
+		reverse_proxy localhost:3001 localhost:3002 localhost:3003 {
+			lb_policy ip_hash
+		}
+	}
+
+	# Handle health checks
+	handle_path /health {
+		reverse_proxy localhost:3001
+	}
+
+	# Serve static files (React build output)
+	# Caddy will serve these directly, bypassing Node
+	handle {
+		root * /home/mojo/projects/scoreboardussy/scoreboardussy/client/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Optional: Wildcard subdomain support for future tenant isolation
+# Uncomment when ready for multi-tenant subdomains
+# *.scoreboard.ussyco.de {
+# 	encode gzip zstd
+# 	
+# 	# Extract subdomain for tenant routing
+# 	handle {
+# 		reverse_proxy localhost:3001 localhost:3002 localhost:3003 {
+# 			lb_policy ip_hash
+# 			header_up Host {host}
+# 		}
+# 	}
+# }
