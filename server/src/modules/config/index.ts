@@ -1,3 +1,4 @@
+import { logger } from './logger';
 import express, { Express } from 'express';
 import cors, { CorsOptions } from 'cors';
 import path from 'path';
@@ -31,13 +32,13 @@ export const corsOptions: CorsOptions = {
         if (process.env.NODE_ENV === 'production' && (publicUrl || explicitOrigin)) {
             if (allowedOrigins.includes(origin)) return callback(null, true);
             const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-            console.error(msg);
+            logger.error(msg);
             return callback(new Error(msg), false);
         }
         // In development, restrict to known dev origins
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-            console.error(msg);
+            logger.error(msg);
             return callback(new Error(msg), false);
         }
         return callback(null, true);
@@ -62,7 +63,7 @@ export const configureStaticServing = (app: Express, isProduction: boolean = fal
         ];
 
         const clientBuildPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
-        console.log(`Serving static files from: ${clientBuildPath}`);
+        logger.info(`Serving static files from: ${clientBuildPath}`);
 
         // Serve static files from the React app build directory
         app.use(express.static(clientBuildPath));
@@ -71,10 +72,10 @@ export const configureStaticServing = (app: Express, isProduction: boolean = fal
         // match one above, send back React's index.html file.
         app.get('*', (req, res) => {
             const indexPath = path.resolve(clientBuildPath, 'index.html');
-            console.log(`Attempting to serve index.html from: ${indexPath}`);
+            logger.info(`Attempting to serve index.html from: ${indexPath}`);
             res.sendFile(indexPath, (err) => {
                 if (err) {
-                    console.error('Error sending index.html:', err);
+                    logger.error('Error sending index.html:', err);
                     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
                         res.status(404).send('Resource not found');
                     } else {
@@ -106,11 +107,14 @@ export const configureLogging = (isProduction: boolean = false) => {
         // e.g., winston or other logging service setup
     } else {
         // Development logging
-        console.log('Development logging enabled');
-        console.log('[build-check] rounds/actions.ts auto-advance banner active');
+        logger.info('Development logging enabled');
+        logger.info('[build-check] rounds/actions.ts auto-advance banner active');
     }
 };
 
 // Export server environment helper
 export const isProduction = (): boolean => process.env.NODE_ENV === 'production' || (process as any).pkg !== undefined;
+
+// Re-export logger
+export { logger } from './logger';
 

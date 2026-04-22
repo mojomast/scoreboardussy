@@ -1,3 +1,4 @@
+import { logger } from './modules/config/logger';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -57,10 +58,10 @@ configureLogging(isProd);
             const pubClient = new Redis(redisUrl);
             const subClient = pubClient.duplicate();
             io.adapter(createAdapter(pubClient as any, subClient as any));
-            console.log('Socket.IO Redis adapter enabled');
+            logger.info('Socket.IO Redis adapter enabled');
         }
     } catch (e) {
-        console.warn('Socket.IO Redis adapter not enabled:', e);
+        logger.warn('Socket.IO Redis adapter not enabled:', e);
     }
 })();
 
@@ -75,7 +76,7 @@ io.use((socket, next) => {
             socket.join(`room:${payload.roomId}`);
             return next();
         } else {
-            console.warn(`Socket auth token invalid for ${socket.id}, continuing as guest`);
+            logger.warn(`Socket auth token invalid for ${socket.id}, continuing as guest`);
         }
     }
     // Backward-compatible: allow connection without token
@@ -105,12 +106,12 @@ app.get('/api/stats', (_req, res) => {
 (async () => {
     try {
         const stateLoaded = await loadPersistedState();
-        console.log(stateLoaded
+        logger.info(stateLoaded
             ? '✅ Persisted state loaded successfully'
             : '⚠️ No persisted state found, using default state');
     } catch (error) {
-        console.error('❌ Error loading persisted state:', error);
-        console.log('⚠️ Continuing with default state');
+        logger.error('❌ Error loading persisted state:', error);
+        logger.info('⚠️ Continuing with default state');
     }
 
     // Initialize socket handlers after state is loaded
@@ -124,10 +125,10 @@ app.get('/api/stats', (_req, res) => {
     setInterval(() => {
         const cleaned = cleanupExpiredRooms();
         if (cleaned > 0) {
-            console.log(`🧹 Cleaned up ${cleaned} expired room(s)`);
+            logger.info(`🧹 Cleaned up ${cleaned} expired room(s)`);
         }
     }, CLEANUP_INTERVAL_MS);
-    console.log('🧹 Room cleanup cron job started (15 min interval)');
+    logger.info('🧹 Room cleanup cron job started (15 min interval)');
 })();
 
 // Start the server
@@ -136,23 +137,23 @@ const listenOptions = getListenOptions(port, isProd);
 
 server.listen(listenOptions, () => {
     const address = listenOptions.host || 'localhost';
-    console.log(`🚀 Server listening at http://${address}:${port}`);
-    console.log(`   WebSocket connections enabled.`);
+    logger.info(`🚀 Server listening at http://${address}:${port}`);
+    logger.info(`   WebSocket connections enabled.`);
 
     if (isProd) {
-        console.log(`   Serving frontend from client/dist`);
-        console.log(`   Accepting connections from network.`);
+        logger.info(`   Serving frontend from client/dist`);
+        logger.info(`   Accepting connections from network.`);
     } else {
-        console.log(`   CORS enabled for development origins.`);
-        console.log(`   Run 'npm run dev:client' in another terminal for frontend.`);
+        logger.info(`   CORS enabled for development origins.`);
+        logger.info(`   Run 'npm run dev:client' in another terminal for frontend.`);
     }
 });
 
 // Handle server shutdown gracefully
 const shutdown = () => {
-    console.log('\nShutting down server...');
+    logger.info('\nShutting down server...');
     server.close(() => {
-        console.log('Server shutdown complete.');
+        logger.info('Server shutdown complete.');
         process.exit(0);
     });
 };

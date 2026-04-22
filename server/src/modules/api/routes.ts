@@ -1,3 +1,4 @@
+import { logger } from '../config/logger';
 import express, { Router, Request, Response } from 'express';
 import {
     getState,
@@ -42,7 +43,7 @@ router.post('/scoring-mode', (req: Request, res: Response) => {
         updateState({ scoringMode: mode });
         res.json(getState());
     } catch (error) {
-        console.error('Error setting scoring mode:', error);
+        logger.error('Error setting scoring mode:', error);
         res.status(500).json({ error: 'Failed to set scoring mode' });
     }
 });
@@ -78,7 +79,7 @@ router.get('/backup/list', async (req: Request, res: Response) => {
             }))
         });
     } catch (error) {
-        console.error('Error listing backups:', error);
+        logger.error('Error listing backups:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to list backups',
@@ -107,7 +108,7 @@ router.post('/backup/create', async (req: Request, res: Response) => {
             });
         }
     } catch (error) {
-        console.error('Error creating backup:', error);
+        logger.error('Error creating backup:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to create backup',
@@ -143,7 +144,7 @@ router.post('/backup/restore', async (req: Request, res: Response) => {
             });
         }
     } catch (error) {
-        console.error('Error restoring from backup:', error);
+        logger.error('Error restoring from backup:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to restore from backup',
@@ -169,7 +170,7 @@ router.post('/state/save', async (req: Request, res: Response) => {
             });
         }
     } catch (error) {
-        console.error('Error saving state:', error);
+        logger.error('Error saving state:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to save state',

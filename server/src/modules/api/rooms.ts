@@ -1,3 +1,4 @@
+import { logger } from '../config/logger';
 import { Router, Request, Response } from 'express';
 import { createRoom, findRoomByCode, deleteRoom, updateRoomActivity } from '../rooms/store';
 import QRCode from 'qrcode';
@@ -33,7 +34,7 @@ router.post('/', (req: Request, res: Response) => {
       createdAt: new Date(room.createdAt).toISOString()
     });
   } catch (error) {
-    console.error('Error creating room:', error);
+    logger.error('Error creating room:', error);
     res.status(500).json({ error: 'Failed to create room' });
   }
 });
@@ -64,7 +65,7 @@ router.get('/:code/info', (req: Request, res: Response) => {
       createdAt: new Date(room.createdAt).toISOString()
     });
   } catch (error) {
-    console.error('Error getting room info:', error);
+    logger.error('Error getting room info:', error);
     res.status(500).json({ error: 'Failed to get room info' });
   }
 });
@@ -101,7 +102,7 @@ router.get('/:code/qr', async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(qrBuffer);
   } catch (error) {
-    console.error('Error generating QR code:', error);
+    logger.error('Error generating QR code:', error);
     res.status(500).json({ error: 'Failed to generate QR code' });
   }
 });
@@ -136,7 +137,7 @@ router.get('/:code/qr-data', async (req: Request, res: Response) => {
       type: type
     });
   } catch (error) {
-    console.error('Error generating QR data URL:', error);
+    logger.error('Error generating QR data URL:', error);
     res.status(500).json({ error: 'Failed to generate QR code' });
   }
 });
@@ -154,7 +155,7 @@ router.delete('/:code', (req: Request, res: Response) => {
     deleteRoom(room.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting room:', error);
+    logger.error('Error deleting room:', error);
     res.status(500).json({ error: 'Failed to delete room' });
   }
 });

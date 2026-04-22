@@ -1,3 +1,4 @@
+import { logger } from '../config/logger';
 import express, { Router, Request, Response } from 'express';
 import { getState, updateState } from '../state';
 import { v4 as uuidv4 } from 'uuid';
@@ -212,7 +213,7 @@ async function loadTeamInfo() {
       }
     }
   } catch (e) {
-    console.error('Error loading team info:', e);
+    logger.error('Error loading team info:', e);
   }
 }
 

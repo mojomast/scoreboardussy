@@ -1,3 +1,4 @@
+import { logger } from '../config/logger';
 import { ScoreboardState } from '../../types/scoreboard.types';
 import { Team } from '../../types/team.types';
 import { RoundConfig, RoundHistory, RoundSettings, RoundTemplate, RoundPlaylist } from '../../types/rounds.types';
@@ -20,7 +21,7 @@ export const getState = (): ScoreboardState => {
         // Return a deep copy to prevent accidental mutation
         return JSON.parse(JSON.stringify(state));
     } catch (error) {
-        console.error('Error during JSON stringify/parse in getState:', error);
+        logger.error('Error during JSON stringify/parse in getState:', error);
         // Return original state on error for debugging purposes
         return state;
     }
@@ -29,7 +30,7 @@ export const getState = (): ScoreboardState => {
 export const updateState = (updates: Partial<ScoreboardState>): void => {
     // Validate updates before applying
     if (!updates || typeof updates !== 'object') {
-        console.error('Invalid updates provided to updateState:', updates);
+        logger.error('Invalid updates provided to updateState:', updates);
         return;
     }
 
@@ -78,21 +79,21 @@ export const updateState = (updates: Partial<ScoreboardState>): void => {
         state = newState;
 
         // Log state change
-        console.log('State updated successfully');
+        logger.info('State updated successfully');
         
         // Persist state to file
         persistState().catch(err => {
-            console.error('Failed to persist state after update:', err);
+            logger.error('Failed to persist state after update:', err);
         });
         
         // Log the transaction
         const actionType = Object.keys(updates).join(',');
         logStateTransaction(actionType, { keys: Object.keys(updates) }).catch(err => {
-            console.error('Failed to log state transaction:', err);
+            logger.error('Failed to log state transaction:', err);
         });
     } catch (error) {
-        console.error('Error updating state:', error);
-        console.error('Updates that caused error:', updates);
+        logger.error('Error updating state:', error);
+        logger.error('Updates that caused error:', updates);
     }
 };
 
@@ -129,10 +130,10 @@ export const persistState = async (): Promise<boolean> => {
             JSON.stringify(state, null, 2)
         );
         
-        console.log('State persisted successfully');
+        logger.info('State persisted successfully');
         return true;
     } catch (error) {
-        console.error('Error persisting state:', error);
+        logger.error('Error persisting state:', error);
         return false;
     }
 };
@@ -154,24 +155,24 @@ export const loadPersistedState = async (): Promise<boolean> => {
             
             // Update the state
             state = loadedState;
-            console.log('State loaded successfully from file');
+            logger.info('State loaded successfully from file');
             return true;
         } else {
-            console.log('No persisted state found, using defaults');
+            logger.info('No persisted state found, using defaults');
             return false;
         }
     } catch (error) {
-        console.error('Error loading persisted state:', error);
+        logger.error('Error loading persisted state:', error);
         
         // Try to recover from backup if available
         if (fs.existsSync(STATE_BACKUP_FILE)) {
             try {
                 const backupData = await fs.promises.readFile(STATE_BACKUP_FILE, 'utf-8');
                 state = JSON.parse(backupData);
-                console.log('Recovered state from backup file');
+                logger.info('Recovered state from backup file');
                 return true;
             } catch (backupError) {
-                console.error('Failed to recover from backup:', backupError);
+                logger.error('Failed to recover from backup:', backupError);
             }
         }
         
@@ -200,7 +201,7 @@ export const logStateTransaction = async (action: string, details?: any): Promis
         const logLine = JSON.stringify(logEntry) + '\n';
         await fs.promises.appendFile(TRANSACTION_LOG_FILE, logLine);
     } catch (error) {
-        console.error('Error logging state transaction:', error);
+        logger.error('Error logging state transaction:', error);
     }
 };
 
@@ -233,10 +234,10 @@ export const createStateBackup = async (backupName?: string): Promise<string | n
             JSON.stringify(state, null, 2)
         );
         
-        console.log(`State backup created at ${backupPath}`);
+        logger.info(`State backup created at ${backupPath}`);
         return backupPath;
     } catch (error) {
-        console.error('Error creating state backup:', error);
+        logger.error('Error creating state backup:', error);
         return null;
     }
 };
@@ -249,7 +250,7 @@ export const createStateBackup = async (backupName?: string): Promise<string | n
 export const restoreStateFromBackup = async (backupPath: string): Promise<boolean> => {
     try {
         if (!fs.existsSync(backupPath)) {
-            console.error(`Backup file not found: ${backupPath}`);
+            logger.error(`Backup file not found: ${backupPath}`);
             return false;
         }
         
@@ -259,7 +260,7 @@ export const restoreStateFromBackup = async (backupPath: string): Promise<boolea
         
         // Validate backup state
         if (!backupState || typeof backupState !== 'object') {
-            console.error('Invalid backup state format');
+            logger.error('Invalid backup state format');
             return false;
         }
         
@@ -272,10 +273,10 @@ export const restoreStateFromBackup = async (backupPath: string): Promise<boolea
         // Persist the restored state
         await persistState();
         
-        console.log(`State restored from backup: ${backupPath}`);
+        logger.info(`State restored from backup: ${backupPath}`);
         return true;
     } catch (error) {
-        console.error('Error restoring state from backup:', error);
+        logger.error('Error restoring state from backup:', error);
         return false;
     }
 };
@@ -310,7 +311,7 @@ export const listStateBackups = async (): Promise<Array<{path: string, date: Dat
         // Sort by date, newest first
         return backups.sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
-        console.error('Error listing state backups:', error);
+        logger.error('Error listing state backups:', error);
         return [];
     }
 };
