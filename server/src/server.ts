@@ -122,8 +122,8 @@ app.get('/api/stats', (_req, res) => {
 
     // Start room cleanup cron job (runs every 15 minutes)
     const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
-    setInterval(() => {
-        const cleaned = cleanupExpiredRooms();
+    setInterval(async () => {
+        const cleaned = await cleanupExpiredRooms();
         if (cleaned > 0) {
             logger.info(`🧹 Cleaned up ${cleaned} expired room(s)`);
         }

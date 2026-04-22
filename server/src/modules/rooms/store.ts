@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import crypto from 'crypto';
+import { prisma } from '../db';
+import { logger } from '../config/logger';
 
 export type Role = 'referee' | 'display' | 'viewer';
 
@@ -30,7 +32,7 @@ const genSecret = () => crypto.randomBytes(16).toString('hex');
 // Default TTL: 2 hours
 const DEFAULT_TTL_MS = parseInt(process.env.ROOM_TTL_HOURS || '2', 10) * 60 * 60 * 1000;
 
-export const createRoom = (): Room => {
+export const createRoom = async (): Promise<Room> => {
   const id = randomUUID();
   let code = genCode();
   while (roomsByCode.has(code)) code = genCode();
@@ -50,6 +52,18 @@ export const createRoom = (): Room => {
   };
   roomsById.set(id, room);
   roomsByCode.set(code, room);
+
+  // Persist to database (upsert)
+  try {
+    await prisma.room.upsert({
+      where: { code: room.code },
+      update: { id: room.id },
+      create: { id: room.id, code: room.code },
+    });
+  } catch (dbError) {
+    logger.warn('Failed to persist room to database:', dbError);
+  }
+
   return room;
 };
 
@@ -67,23 +81,53 @@ export const updateRoomActivity = (roomId: string): void => {
 
 export const getAllRooms = (): Room[] => Array.from(roomsById.values());
 
-export const deleteRoom = (roomId: string): boolean => {
+export const deleteRoom = async (roomId: string): Promise<boolean> => {
   const room = roomsById.get(roomId);
   if (!room) return false;
   roomsById.delete(roomId);
   roomsByCode.delete(room.code);
+
+  // Remove from database
+  try {
+    await prisma.room.deleteMany({ where: { id: roomId } });
+  } catch (dbError) {
+    logger.warn('Failed to delete room from database:', dbError);
+  }
+
   return true;
 };
 
-export const cleanupExpiredRooms = (): number => {
+export const cleanupExpiredRooms = async (): Promise<number> => {
   const now = Date.now();
   let cleaned = 0;
+  const expiredRooms: Room[] = [];
   for (const room of roomsById.values()) {
     if (room.expiresAt < now) {
-      deleteRoom(room.id);
-      cleaned++;
+      expiredRooms.push(room);
     }
+  }
+  for (const room of expiredRooms) {
+    await deleteRoom(room.id);
+    cleaned++;
   }
   return cleaned;
 };
 
+export const importRoomsFromDb = (dbRooms: Array<{ id: string; code: string; createdAt: Date }>): void => {
+  for (const dbRoom of dbRooms) {
+    const room: Room = {
+      id: dbRoom.id,
+      code: dbRoom.code,
+      secrets: {
+        referee: genSecret(),
+        display: genSecret(),
+        viewer: genSecret(),
+      },
+      createdAt: dbRoom.createdAt.getTime(),
+      lastActivity: Date.now(),
+      expiresAt: Date.now() + DEFAULT_TTL_MS,
+    };
+    roomsById.set(room.id, room);
+    roomsByCode.set(room.code, room);
+  }
+};

@@ -15,9 +15,9 @@ function getBaseUrl(req: Request): string {
 const router = Router();
 
 // Create new room
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const room = createRoom();
+    const room = await createRoom();
     const base = getBaseUrl(req);
 
     // Generate URLs with room code
@@ -143,7 +143,7 @@ router.get('/:code/qr-data', async (req: Request, res: Response) => {
 });
 
 // Delete room by code
-router.delete('/:code', (req: Request, res: Response) => {
+router.delete('/:code', async (req: Request, res: Response) => {
   try {
     const { code } = req.params;
     const room = findRoomByCode(code.toUpperCase());
@@ -152,7 +152,7 @@ router.delete('/:code', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    deleteRoom(room.id);
+    await deleteRoom(room.id);
     res.json({ success: true });
   } catch (error) {
     logger.error('Error deleting room:', error);

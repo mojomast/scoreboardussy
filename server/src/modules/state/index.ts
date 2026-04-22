@@ -5,6 +5,7 @@ import { RoundConfig, RoundHistory, RoundSettings, RoundTemplate, RoundPlaylist 
 import { getInitialTeamState } from './team';
 import { getInitialUiState } from './ui';
 import { getInitialRoundState } from './rounds/state';
+import { prisma } from '../db';
 
 // Global state instance
 // Fucking global state - single source of truth
@@ -144,26 +145,36 @@ export const persistState = async (): Promise<boolean> => {
  */
 export const loadPersistedState = async (): Promise<boolean> => {
     try {
+        let loaded = false;
+
+        // Try loading from file first (legacy)
         if (fs.existsSync(STATE_FILE)) {
             const data = await fs.promises.readFile(STATE_FILE, 'utf-8');
             const loadedState = JSON.parse(data);
-            
-            // Validate the loaded state
-            if (!loadedState || typeof loadedState !== 'object') {
-                throw new Error('Invalid state format');
+            if (loadedState && typeof loadedState === 'object') {
+                state = loadedState;
+                loaded = true;
+                logger.info('State loaded successfully from file');
             }
-            
-            // Update the state
-            state = loadedState;
-            logger.info('State loaded successfully from file');
-            return true;
-        } else {
-            logger.info('No persisted state found, using defaults');
-            return false;
         }
+
+        // Try loading rooms from database
+        try {
+            const dbRooms = await prisma.room.findMany();
+            if (dbRooms.length > 0) {
+                const { importRoomsFromDb } = await import('../rooms/store');
+                importRoomsFromDb(dbRooms);
+                loaded = true;
+                logger.info(`Loaded ${dbRooms.length} room(s) from database`);
+            }
+        } catch (dbError) {
+            logger.warn('Database not available for room persistence:', dbError);
+        }
+
+        return loaded;
     } catch (error) {
         logger.error('Error loading persisted state:', error);
-        
+
         // Try to recover from backup if available
         if (fs.existsSync(STATE_BACKUP_FILE)) {
             try {
@@ -175,7 +186,7 @@ export const loadPersistedState = async (): Promise<boolean> => {
                 logger.error('Failed to recover from backup:', backupError);
             }
         }
-        
+
         return false;
     }
 };

@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "test": "jest",
     "package:win": "pkg dist/server.js --targets node18-win-x64 --output build/ImprovScoreboard.exe"
