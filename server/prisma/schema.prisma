@@ -7,9 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  plan            String   @default("free")  // "free" | "pro"
+  stripeCustomerId String?
+  createdAt       DateTime @default(now())
+  rooms           Room[]
+}
+
 model Room {
   id        String   @id @default(uuid())
   code      String   @unique
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())
   events    RoomEvent[]
   snapshots RoomSnapshot[]
