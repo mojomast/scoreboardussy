@@ -25,6 +25,8 @@ import roomRoutes from './modules/rooms/routes';
 import { verifyRoomToken } from './modules/auth/tokens';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { loadPersistedState } from './modules/state';
+import { initializeDefaultTemplates } from './modules/state/rounds/templates';
+import { cleanupExpiredRooms, getAllRooms } from './modules/rooms/store';
 
 // Create Express app and HTTP server
 const app = express();
@@ -44,52 +46,9 @@ const io = new Server<
 configureMiddleware(app);
 app.use(globalRateLimiter);
 
-// Mount API routes
+// Mount API routes (before static serving)
 app.use('/api/rooms', roomCreationRateLimiter, roomRoutes);
 app.use('/api', apiRoutes);
-
-// Configure static file serving and environment
-const isProd = isProduction();
-configureStaticServing(app, isProd);
-configureLogging(isProd);
-
-// Optional Socket.IO Redis adapter (M2 scaffolding)
-(async () => {
-    try {
-        const redisUrl = process.env.REDIS_URL;
-        if (redisUrl) {
-            const { default: Redis } = await import('ioredis');
-            const pubClient = new Redis(redisUrl);
-            const subClient = pubClient.duplicate();
-            io.adapter(createAdapter(pubClient as any, subClient as any));
-            logger.info('Socket.IO Redis adapter enabled');
-        }
-    } catch (e) {
-        logger.warn('Socket.IO Redis adapter not enabled:', e);
-    }
-})();
-
-// Socket auth middleware (M1): accept optional token and join room channel
-io.use((socket, next) => {
-    const token = socket.handshake.auth?.token || socket.handshake.headers['x-room-token'];
-    if (typeof token === 'string') {
-        const payload = verifyRoomToken(token);
-        if (payload) {
-            socket.data = { ...(socket.data || {}), roomId: payload.roomId, role: payload.role } as any;
-            // Join a Socket.IO room for later room-scoped broadcasts
-            socket.join(`room:${payload.roomId}`);
-            return next();
-        } else {
-            logger.warn(`Socket auth token invalid for ${socket.id}, continuing as guest`);
-        }
-    }
-    // Backward-compatible: allow connection without token
-    return next();
-});
-
-// Import template initialization function
-import { initializeDefaultTemplates } from './modules/state/rounds/templates';
-import { cleanupExpiredRooms, getAllRooms } from './modules/rooms/store';
 
 // Health check endpoint - checks all dependencies
 app.get('/health', async (_req, res) => {
@@ -138,16 +97,55 @@ app.get('/api/stats', (_req, res) => {
     });
 });
 
+// Configure static file serving and environment (AFTER API routes)
+const isProd = isProduction();
+configureStaticServing(app, isProd);
+configureLogging(isProd);
+
+// Optional Socket.IO Redis adapter (M2 scaffolding)
+(async () => {
+    try {
+        const redisUrl = process.env.REDIS_URL;
+        if (redisUrl) {
+            const { default: Redis } = await import('ioredis');
+            const pubClient = new Redis(redisUrl);
+            const subClient = pubClient.duplicate();
+            io.adapter(createAdapter(pubClient as any, subClient as any));
+            logger.info('Socket.IO Redis adapter enabled');
+        }
+    } catch (e) {
+        logger.warn({ err: e }, 'Socket.IO Redis adapter not enabled');
+    }
+})();
+
+// Socket auth middleware (M1): accept optional token and join room channel
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers['x-room-token'];
+    if (typeof token === 'string') {
+        const payload = verifyRoomToken(token);
+        if (payload) {
+            socket.data = { ...(socket.data || {}), roomId: payload.roomId, role: payload.role } as any;
+            // Join a Socket.IO room for later room-scoped broadcasts
+            socket.join(`room:${payload.roomId}`);
+            return next();
+        } else {
+            logger.warn(`Socket auth token invalid for ${socket.id}, continuing as guest`);
+        }
+    }
+    // Backward-compatible: allow connection without token
+    return next();
+});
+
 // Load persisted state if available
 (async () => {
     try {
         const stateLoaded = await loadPersistedState();
         logger.info(stateLoaded
-            ? '✅ Persisted state loaded successfully'
-            : '⚠️ No persisted state found, using default state');
+            ? 'Persisted state loaded successfully'
+            : 'No persisted state found, using default state');
     } catch (error) {
-        logger.error('❌ Error loading persisted state:', error);
-        logger.info('⚠️ Continuing with default state');
+        logger.error({ error }, 'Error loading persisted state');
+        logger.info('Continuing with default state');
     }
 
     // Initialize socket handlers after state is loaded
@@ -161,10 +159,10 @@ app.get('/api/stats', (_req, res) => {
     setInterval(async () => {
         const cleaned = await cleanupExpiredRooms();
         if (cleaned > 0) {
-            logger.info(`🧹 Cleaned up ${cleaned} expired room(s)`);
+            logger.info(`Cleaned up ${cleaned} expired room(s)`);
         }
     }, CLEANUP_INTERVAL_MS);
-    logger.info('🧹 Room cleanup cron job started (15 min interval)');
+    logger.info('Room cleanup cron job started (15 min interval)');
 })();
 
 // Start the server
@@ -173,15 +171,15 @@ const listenOptions = getListenOptions(port, isProd);
 
 server.listen(listenOptions, () => {
     const address = listenOptions.host || 'localhost';
-    logger.info(`🚀 Server listening at http://${address}:${port}`);
-    logger.info(`   WebSocket connections enabled.`);
+    logger.info(`Server listening at http://${address}:${port}`);
+    logger.info('WebSocket connections enabled.');
 
     if (isProd) {
-        logger.info(`   Serving frontend from client/dist`);
-        logger.info(`   Accepting connections from network.`);
+        logger.info('Serving frontend from client/dist');
+        logger.info('Accepting connections from network.');
     } else {
-        logger.info(`   CORS enabled for development origins.`);
-        logger.info(`   Run 'npm run dev:client' in another terminal for frontend.`);
+        logger.info('CORS enabled for development origins.');
+        logger.info('Run npm run dev:client in another terminal for frontend.');
     }
 });
 
@@ -198,13 +196,13 @@ const shutdown = async () => {
             await prisma.$disconnect();
             logger.info('Database disconnected');
         } catch (err) {
-            logger.error('Error disconnecting from database:', err);
+            logger.error({ err }, 'Error disconnecting from database');
         }
         
         // Disconnect from Redis if connected
         if (process.env.REDIS_URL) {
             try {
-                const { disconnectRedis } = await import('./modules/redis');
+                const { disconnectRedis } = await import('./modules/redis/client');
                 await disconnectRedis();
                 logger.info('Redis disconnected');
             } catch {
@@ -226,10 +224,10 @@ const shutdown = async () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('uncaughtException', (err) => {
-    logger.error('Uncaught exception:', err);
+    logger.error(err, 'Uncaught exception');
     shutdown();
 });
 process.on('unhandledRejection', (reason) => {
-    logger.error('Unhandled rejection:', reason);
+    logger.error({ reason }, 'Unhandled rejection');
     shutdown();
 });
