@@ -5,6 +5,10 @@ import { ScoreboardProvider } from './contexts/ScoreboardContext';
 import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
 import ScoreboardControl from './components/scoreboard/ScoreboardControl';
 import Home from './components/Home';
+import ScoreboardDisplayRouter from './components/scoreboard/ScoreboardDisplayRouter';
+import ControlPanelRouter from './components/control/ControlPanelRouter';
+import VotingInterfaceRouter from './components/voting/VotingInterfaceRouter';
+import DesignPicker from './components/ui/DesignPicker';
 
 // Import Mantine core styles
 import '@mantine/core/styles.css';
@@ -46,9 +50,11 @@ function App() {
   } else if (route.view === '/home' || route.view === '/' || route.view === '') {
     viewComponent = <Home />;
   } else if (route.view === '/display') {
-    viewComponent = <ScoreboardDisplay />;
+    viewComponent = <ScoreboardDisplayRouter team1={{ name: 'Team 1', score: 0, color: '#EF4444' }} team2={{ name: 'Team 2', score: 0, color: '#3B82F6' }} currentRound={1} timer={180} isLive={false} />;
   } else if (route.view === '/control') {
-    viewComponent = <ScoreboardControl />;
+    viewComponent = <ControlPanelRouter />;
+  } else if (route.view === '/vote') {
+    viewComponent = <VotingInterfaceRouter />;
   } else {
     // Unknown view
     viewComponent = (
@@ -73,6 +79,7 @@ function App() {
     <MantineProvider>
       <ScoreboardProvider>
         {viewComponent}
+        <DesignPicker />
       </ScoreboardProvider>
     </MantineProvider>
   );

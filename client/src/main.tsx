@@ -1,9 +1,10 @@
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App'; 
+import App from './App';
 import './i18n';
 import { initRoomAuthFromUrl } from './utils/room';
-import './index.css'; 
+import './index.css';
+import { DesignProvider } from './contexts/DesignContext';
 
 // Capture token from URL early so socket can use it on first connect
 initRoomAuthFromUrl(true);
@@ -17,7 +18,9 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement!).render(
   <React.StrictMode>
     <Suspense fallback={<div>Loading translations...</div>}>
-      <App />
+      <DesignProvider>
+        <App />
+      </DesignProvider>
     </Suspense>
   </React.StrictMode>,
 );
