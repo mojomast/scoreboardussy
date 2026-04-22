@@ -7,9 +7,16 @@ Version 0.5.6-beta
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](https://nodejs.org/)  
 [![React](https://img.shields.io/badge/Frontend-React-blue.svg)](https://reactjs.org/)  
-[![Express.js](https://img.shields.io/badge/Backend-Express.js-lightgrey.svg)](https://expressjs.com/)
+[![Express.js](https://img.shields.io/badge/Backend-Express.js-lightgrey.svg)](https://expressjs.com/)  
+[![CI](https://github.com/mojomast/scoreboardussy/actions/workflows/ci.yml/badge.svg)](https://github.com/mojomast/scoreboardussy/actions/workflows/ci.yml)
  
 [Version Française](#version-française-)
+
+## 🌐 Hosted Demo
+
+A public demo is coming soon. URL TBD.
+
+---
 
 **Scoreboardussy** is a real-time, web-based scoreboard designed specifically for improv shows, providing dynamic score tracking and audience interaction features — with a separate control panel and audience display.
 
@@ -39,6 +46,23 @@ Version 0.5.6-beta
 
 **Frontend:** React, Vite, TypeScript, Tailwind CSS, Shadcn/UI, i18next  
 **Backend:** Node.js, Express, Socket.IO, TypeScript
+
+---
+
+## 🚀 Quick Deploy
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions on self-hosting with Docker, Railway, Fly.io, and SSL/Caddy setup.
+
+---
+
+## 💰 Free vs Pro
+
+| Feature | Free | Pro |
+|---------|------|-----|
+| Active rooms | Up to 3 | Unlimited |
+| Spectators per room | 20 | 500 |
+| Room TTL | 2 hours | 24 hours |
+| Custom branding | — | Yes |
 
 ---
 
@@ -131,7 +155,7 @@ For advanced users, you **can** expose the app to the internet using:
 
 ## 📸 Screenshots
 
-![scoreboard](Screenshot%202025-05-05%20222028.png) ![control interface](Screenshot%202025-05-05%20222019.png) 
+![scoreboard](docs/screenshots/Screenshot%202025-05-05%20222028.png) ![control interface](docs/screenshots/Screenshot%202025-05-05%20222019.png) 
 
 ---
 
