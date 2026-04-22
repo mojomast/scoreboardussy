@@ -8,11 +8,11 @@ const ControlPanelRouter: React.FC<any> = (props) => {
   const { designs } = useDesign();
 
   switch (designs.controlPanel) {
-    case 'cyberpunk':
+    case 'dark':
       return <DarkControlPanel {...props} />;
-    case 'minimalist':
+    case 'touch':
       return <TouchControlPanel {...props} />;
-    case 'retro':
+    case 'gamepad':
       return <GamepadControlPanel {...props} />;
     default:
       return <DarkControlPanel {...props} />;

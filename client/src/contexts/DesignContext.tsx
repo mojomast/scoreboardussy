@@ -1,16 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-export type ElementType = 'scoreboard' | 'controlPanel' | 'voting';
-export type DesignVariant = 'cyberpunk' | 'minimalist' | 'retro';
+export type ScoreboardVariant = 'cyberpunk' | 'minimalist' | 'retro';
+export type ControlPanelVariant = 'dark' | 'touch' | 'gamepad';
+export type VotingVariant = 'social' | 'casino' | 'minimal';
 
-export type DesignSelection = Record<ElementType, DesignVariant>;
+export interface DesignSelection {
+  scoreboard: ScoreboardVariant;
+  controlPanel: ControlPanelVariant;
+  voting: VotingVariant;
+}
 
-const STORAGE_KEY = 'improv_design_selection';
+const STORAGE_KEY = 'improv_design_selection_v2';
 
 const defaultDesigns: DesignSelection = {
   scoreboard: 'cyberpunk',
-  controlPanel: 'minimalist',
-  voting: 'retro',
+  controlPanel: 'dark',
+  voting: 'social',
 };
 
 function loadDesigns(): DesignSelection {
@@ -22,8 +27,8 @@ function loadDesigns(): DesignSelection {
         typeof parsed === 'object' &&
         parsed !== null &&
         ['cyberpunk', 'minimalist', 'retro'].includes(parsed.scoreboard) &&
-        ['cyberpunk', 'minimalist', 'retro'].includes(parsed.controlPanel) &&
-        ['cyberpunk', 'minimalist', 'retro'].includes(parsed.voting)
+        ['dark', 'touch', 'gamepad'].includes(parsed.controlPanel) &&
+        ['social', 'casino', 'minimal'].includes(parsed.voting)
       ) {
         return parsed as DesignSelection;
       }
@@ -44,7 +49,9 @@ function saveDesigns(designs: DesignSelection) {
 
 export interface DesignContextValue {
   designs: DesignSelection;
-  setDesign: (element: ElementType, variant: DesignVariant) => void;
+  setScoreboardDesign: (variant: ScoreboardVariant) => void;
+  setControlPanelDesign: (variant: ControlPanelVariant) => void;
+  setVotingDesign: (variant: VotingVariant) => void;
   resetDesigns: () => void;
 }
 
@@ -57,8 +64,16 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     saveDesigns(designs);
   }, [designs]);
 
-  const setDesign = useCallback((element: ElementType, variant: DesignVariant) => {
-    setDesigns((prev) => ({ ...prev, [element]: variant }));
+  const setScoreboardDesign = useCallback((variant: ScoreboardVariant) => {
+    setDesigns((prev) => ({ ...prev, scoreboard: variant }));
+  }, []);
+
+  const setControlPanelDesign = useCallback((variant: ControlPanelVariant) => {
+    setDesigns((prev) => ({ ...prev, controlPanel: variant }));
+  }, []);
+
+  const setVotingDesign = useCallback((variant: VotingVariant) => {
+    setDesigns((prev) => ({ ...prev, voting: variant }));
   }, []);
 
   const resetDesigns = useCallback(() => {
@@ -66,7 +81,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <DesignContext.Provider value={{ designs, setDesign, resetDesigns }}>
+    <DesignContext.Provider value={{ designs, setScoreboardDesign, setControlPanelDesign, setVotingDesign, resetDesigns }}>
       {children}
     </DesignContext.Provider>
   );
@@ -78,45 +93,4 @@ export function useDesign(): DesignContextValue {
     throw new Error('useDesign must be used within a DesignProvider');
   }
   return ctx;
-}
-
-const elementLabels: Record<ElementType, string> = {
-  scoreboard: 'Scoreboard',
-  controlPanel: 'Control Panel',
-  voting: 'Voting',
-};
-
-const variants: DesignVariant[] = ['cyberpunk', 'minimalist', 'retro'];
-
-export function DesignPicker() {
-  const { designs, setDesign, resetDesigns } = useDesign();
-
-  return (
-    <div className="design-picker">
-      <h3>Design Theme</h3>
-      {(Object.keys(elementLabels) as ElementType[]).map((element) => (
-        <div key={element} className="design-picker-row">
-          <span className="design-picker-label">{elementLabels[element]}</span>
-          <div className="design-picker-options">
-            {variants.map((variant) => (
-              <button
-                key={variant}
-                className={
-                  'design-picker-option' +
-                  (designs[element] === variant ? ' design-picker-option--active' : '')
-                }
-                onClick={() => setDesign(element, variant)}
-                aria-pressed={designs[element] === variant}
-              >
-                {variant.charAt(0).toUpperCase() + variant.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-      <button className="design-picker-reset" onClick={resetDesigns}>
-        Reset to Defaults
-      </button>
-    </div>
-  );
 }

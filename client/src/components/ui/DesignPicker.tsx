@@ -1,22 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDesign, ElementType, DesignVariant } from '../../contexts/DesignContext';
+import { useDesign } from '../../contexts/DesignContext';
 
-const elementLabels: Record<ElementType, string> = {
-  scoreboard: 'Scoreboard',
-  controlPanel: 'Control Panel',
-  voting: 'Voting',
-};
+interface DesignOption {
+  id: string;
+  label: string;
+  description: string;
+}
 
-const variants: DesignVariant[] = ['cyberpunk', 'minimalist', 'retro'];
+const scoreboardOptions: DesignOption[] = [
+  { id: 'cyberpunk', label: 'Cyberpunk', description: 'Neon glow, particle effects, futuristic' },
+  { id: 'minimalist', label: 'Minimalist', description: 'Clean ESPN-style broadcast' },
+  { id: 'retro', label: 'Retro', description: '8-bit arcade, CRT scanlines' },
+];
 
-const variantLabels: Record<DesignVariant, string> = {
-  cyberpunk: 'Cyberpunk',
-  minimalist: 'Minimalist',
-  retro: 'Retro',
-};
+const controlPanelOptions: DesignOption[] = [
+  { id: 'dark', label: 'Dark Pro', description: 'VS Code theme, keyboard shortcuts' },
+  { id: 'touch', label: 'Touch', description: 'iPad-optimized big buttons' },
+  { id: 'gamepad', label: 'Gamepad', description: 'Xbox controller layout' },
+];
+
+const votingOptions: DesignOption[] = [
+  { id: 'social', label: 'Social', description: 'TikTok energy, hearts' },
+  { id: 'casino', label: 'Casino', description: 'Vegas glitz, slot counters' },
+  { id: 'minimal', label: 'Minimal', description: 'Apple elegance, refined' },
+];
 
 const DesignPicker: React.FC = () => {
-  const { designs, setDesign, resetDesigns } = useDesign();
+  const { designs, setScoreboardDesign, setControlPanelDesign, setVotingDesign, resetDesigns } = useDesign();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +83,7 @@ const DesignPicker: React.FC = () => {
             position: 'absolute',
             bottom: '72px',
             right: '0',
-            width: '320px',
+            width: '360px',
             background: 'linear-gradient(180deg, #1e1e2e 0%, #181825 100%)',
             borderRadius: '16px',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -92,7 +102,7 @@ const DesignPicker: React.FC = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
-              Design Theme
+              🎨 Design Theme
             </h3>
             <button
               onClick={() => setIsOpen(false)}
@@ -117,51 +127,114 @@ const DesignPicker: React.FC = () => {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {(Object.keys(elementLabels) as ElementType[]).map((element) => (
-              <div key={element}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-                  {elementLabels[element]}
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {variants.map((variant) => {
-                    const isActive = designs[element] === variant;
-                    return (
-                      <button
-                        key={variant}
-                        onClick={() => setDesign(element, variant)}
-                        style={{
-                          flex: 1,
-                          padding: '8px 0',
-                          borderRadius: '10px',
-                          border: isActive ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255,255,255,0.06)',
-                          background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)',
-                          color: isActive ? '#fff' : '#aaa',
-                          fontSize: '13px',
-                          fontWeight: isActive ? 600 : 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
-                            (e.currentTarget as HTMLButtonElement).style.color = '#ddd';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)';
-                            (e.currentTarget as HTMLButtonElement).style.color = '#aaa';
-                          }
-                        }}
-                      >
-                        {variantLabels[variant]}
-                      </button>
-                    );
-                  })}
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Scoreboard Section */}
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                🎭 Scoreboard Display
               </div>
-            ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {scoreboardOptions.map((option) => {
+                  const isActive = designs.scoreboard === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setScoreboardDesign(option.id as any)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: isActive ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255,255,255,0.06)',
+                        background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)',
+                        color: isActive ? '#fff' : '#aaa',
+                        fontSize: '13px',
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: 400 }}>{option.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Control Panel Section */}
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                🎮 Control Panel
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {controlPanelOptions.map((option) => {
+                  const isActive = designs.controlPanel === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setControlPanelDesign(option.id as any)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: isActive ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255,255,255,0.06)',
+                        background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)',
+                        color: isActive ? '#fff' : '#aaa',
+                        fontSize: '13px',
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: 400 }}>{option.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Voting Section */}
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                📱 Voting Interface
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {votingOptions.map((option) => {
+                  const isActive = designs.voting === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setVotingDesign(option.id as any)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: isActive ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255,255,255,0.06)',
+                        background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)',
+                        color: isActive ? '#fff' : '#aaa',
+                        fontSize: '13px',
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: 400 }}>{option.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>

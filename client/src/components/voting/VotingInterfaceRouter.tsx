@@ -8,11 +8,11 @@ const VotingInterfaceRouter: React.FC<any> = (props) => {
   const { designs } = useDesign();
 
   switch (designs.voting) {
-    case 'cyberpunk':
+    case 'social':
       return <SocialVoting {...props} />;
-    case 'minimalist':
+    case 'casino':
       return <CasinoVoting {...props} />;
-    case 'retro':
+    case 'minimal':
       return <MinimalVoting {...props} />;
     default:
       return <SocialVoting {...props} />;

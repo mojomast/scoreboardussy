@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { MantineProvider } from '@mantine/core';
 import { ScoreboardProvider } from './contexts/ScoreboardContext';
-import ScoreboardDisplay from './components/scoreboard/ScoreboardDisplay';
-import ScoreboardControl from './components/scoreboard/ScoreboardControl';
 import Home from './components/Home';
 import ScoreboardDisplayRouter from './components/scoreboard/ScoreboardDisplayRouter';
 import ControlPanelRouter from './components/control/ControlPanelRouter';
 import VotingInterfaceRouter from './components/voting/VotingInterfaceRouter';
 import DesignPicker from './components/ui/DesignPicker';
 
-// Import Mantine core styles
 import '@mantine/core/styles.css';
 
 function App() {
@@ -18,10 +15,8 @@ function App() {
 
   const parseRoute = () => {
     const hash = window.location.hash || '#/home';
-    // Remove leading #
     const path = hash.substring(1);
 
-    // Match patterns: /room/:code or /room/:code/control
     const roomMatch = path.match(/^\/room\/([A-Z0-9]{6})(\/control)?$/);
     if (roomMatch) {
       const code = roomMatch[1];
@@ -29,7 +24,6 @@ function App() {
       return { view: 'room', code, isControl };
     }
 
-    // Simple hash routes
     return { view: path.replace(/\?.*$/, ''), code: null, isControl: false };
   };
 
@@ -42,21 +36,32 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  const demoTeam1 = { name: 'Red Team', score: 42, color: '#EF4444', penalties: 3 };
+  const demoTeam2 = { name: 'Blue Team', score: 38, color: '#3B82F6', penalties: 1 };
+
   let viewComponent;
 
   if (route.view === 'room' && route.code) {
-    // Room code-based routing
-    viewComponent = route.isControl ? <ScoreboardControl /> : <ScoreboardDisplay />;
+    viewComponent = route.isControl 
+      ? <ControlPanelRouter /> 
+      : <ScoreboardDisplayRouter team1={demoTeam1} team2={demoTeam2} currentRound={3} timer={120} isLive={true} />;
   } else if (route.view === '/home' || route.view === '/' || route.view === '') {
     viewComponent = <Home />;
   } else if (route.view === '/display') {
-    viewComponent = <ScoreboardDisplayRouter team1={{ name: 'Team 1', score: 0, color: '#EF4444' }} team2={{ name: 'Team 2', score: 0, color: '#3B82F6' }} currentRound={1} timer={180} isLive={false} />;
+    viewComponent = <ScoreboardDisplayRouter team1={demoTeam1} team2={demoTeam2} currentRound={3} timer={120} isLive={true} />;
   } else if (route.view === '/control') {
     viewComponent = <ControlPanelRouter />;
   } else if (route.view === '/vote') {
-    viewComponent = <VotingInterfaceRouter />;
+    viewComponent = (
+      <VotingInterfaceRouter 
+        team1={demoTeam1} 
+        team2={demoTeam2} 
+        votes={{ team1: 156, team2: 142 }} 
+        isActive={true} 
+        onVote={(team: string) => console.log('Voted for:', team)} 
+      />
+    );
   } else {
-    // Unknown view
     viewComponent = (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
@@ -86,4 +91,3 @@ function App() {
 }
 
 export default App;
-
