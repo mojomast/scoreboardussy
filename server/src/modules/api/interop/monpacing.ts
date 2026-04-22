@@ -1,3 +1,4 @@
+import { logger } from '../../config/logger';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { verifyInteropToken, signInteropToken } from '../../auth/tokens';
 import { matchStateManager } from '../../state/matches';
@@ -45,7 +46,7 @@ router.post('/qr', (req: Request, res: Response) => {
 
     res.json({ url, id, token });
   } catch (e) {
-    console.error('Error creating QR payload:', e);
+    logger.error('Error creating QR payload:', e);
     res.status(500).json({ error: 'Failed to create QR payload' });
   }
 });
@@ -92,7 +93,7 @@ router.post('/plan', requireInteropAuth, (req: Request, res: Response) => {
 
     res.json({ success: true, match: existing });
   } catch (e) {
-    console.error('Error handling mon-pacing plan:', e);
+    logger.error('Error handling mon-pacing plan:', e);
     res.status(500).json({ error: 'Failed to process plan' });
   }
 });
@@ -169,7 +170,7 @@ router.post('/match', requireInteropAuth, (req: Request, res: Response) => {
 
     return res.json({ success: true, applied: { team1: team1Score, team2: team2Score } });
   } catch (e) {
-    console.error('Error handling mon-pacing match:', e);
+    logger.error('Error handling mon-pacing match:', e);
     return res.status(500).json({ error: 'Failed to process match push' });
   }
 });
@@ -208,13 +209,13 @@ router.post('/timer', requireInteropAuth, (req: Request, res: Response) => {
         break;
       }
       default: {
-        console.warn('Unhandled mon-pacing timer status:', status);
+        logger.warn('Unhandled mon-pacing timer status:', status);
       }
     }
 
     return res.json({ success: true });
   } catch (e) {
-    console.error('Error handling mon-pacing timer:', e);
+    logger.error('Error handling mon-pacing timer:', e);
     return res.status(500).json({ error: 'Failed to process timer update' });
   }
 });
@@ -286,13 +287,13 @@ router.post('/event', requireInteropAuth, (req: Request, res: Response) => {
       }
       default: {
         // Accept but no-op for unknown types (round lifecycle etc.)
-        console.warn('Unhandled mon-pacing event type:', type);
+        logger.warn('Unhandled mon-pacing event type:', type);
       }
     }
 
     res.json({ success: true });
   } catch (e) {
-    console.error('Error handling mon-pacing event:', e);
+    logger.error('Error handling mon-pacing event:', e);
     res.status(500).json({ error: 'Failed to process event' });
   }
 });

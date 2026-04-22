@@ -1,2 +1,2 @@
 // UI Components barrel export
-export {};
+export { default as DesignPicker } from './DesignPicker';

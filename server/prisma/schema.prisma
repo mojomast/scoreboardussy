@@ -7,28 +7,78 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  plan            String   @default("free")  // "free" | "pro"
+  stripeCustomerId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  rooms           Room[]
+  
+  @@index([email])
+  @@index([plan])
+}
+
 model Room {
   id        String   @id @default(uuid())
   code      String   @unique
+  name      String?
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  status    String   @default("active")  // active | archived | deleted
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime?
   events    RoomEvent[]
   snapshots RoomSnapshot[]
+  
+  @@index([code])
+  @@index([ownerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([createdAt])
 }
 
 model RoomEvent {
   id        String   @id @default(cuid())
   roomId    String
-  room      Room     @relation(fields: [roomId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   type      String
   payload   Json
   createdAt DateTime @default(now())
+  
+  @@index([roomId])
+  @@index([roomId, createdAt])
+  @@index([type])
 }
 
 model RoomSnapshot {
   id        String   @id @default(cuid())
   roomId    String
-  room      Room     @relation(fields: [roomId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   version   Int
   state     Json
   createdAt DateTime @default(now())
+  
+  @@index([roomId])
+  @@index([roomId, createdAt])
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  keyHash     String   @unique
+  tenantId    String
+  name        String
+  permissions String[] // Array of permission strings
+  rateLimit   Int      @default(100)
+  status      String   @default("active")
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  
+  @@index([keyHash])
+  @@index([tenantId])
+  @@index([status])
 }

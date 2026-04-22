@@ -1,3 +1,4 @@
+import { logger } from '../../config/logger';
 import { 
     EndRoundPayload, 
     RoundConfig, 
@@ -35,7 +36,7 @@ export const advanceRound = (config: RoundConfig): RoundConfig | null => {
     try {
         // Fucking validation first
         if (!validateRoundConfig(config)) {
-            console.error('Invalid round config provided:', config);
+            logger.error('Invalid round config provided:', config);
             return null;
         }
 
@@ -47,10 +48,10 @@ export const advanceRound = (config: RoundConfig): RoundConfig | null => {
         //    startTimer(config.timeLimit);
         // }
 
-        console.log(`Advanced to round ${config.number}: ${config.type}`);
+        logger.info(`Advanced to round ${config.number}: ${config.type}`);
         return config;
     } catch (error) {
-        console.error('Holy shit! Error advancing round:', error);
+        logger.error('Holy shit! Error advancing round:', error);
         return null;
     }
 };
@@ -70,7 +71,7 @@ export const startRound = (payload: StartRoundPayload): RoundConfig | null => {
         }
         return advanceRound(payload.config);
     } catch (error) {
-        console.error('Fuck! Error starting round:', error);
+        logger.error('Fuck! Error starting round:', error);
         return null;
     }
 };
@@ -85,7 +86,7 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
         const state = getState();
         const currentRound = getCurrentRound();
         if (!currentRound) {
-            console.error('No active round to save results for');
+            logger.error('No active round to save results for');
             return null;
         }
 
@@ -139,17 +140,17 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
         if (shouldAutoAdvance) {
             const freshState = getState();
             const queueLen = (freshState.rounds.upcoming || []).length;
-            console.log(`[rounds] Auto-advance enabled. Upcoming length: ${queueLen}`);
+            logger.info(`[rounds] Auto-advance enabled. Upcoming length: ${queueLen}`);
             const nextQueued = (freshState.rounds.upcoming && freshState.rounds.upcoming[0]) || null;
             if (nextQueued && validateRoundConfig(nextQueued)) {
-                console.log('[rounds] Advancing to next queued round:', nextQueued);
+                logger.info('[rounds] Advancing to next queued round:', nextQueued);
                 const dequeued = dequeueUpcoming();
                 if (dequeued) {
                     const nextRoundNumber = history.length + 1; // after push above
                     setCurrentRound({ ...dequeued, number: nextRoundNumber });
-                    console.log(`[rounds] Set current to queued round #${nextRoundNumber}`);
+                    logger.info(`[rounds] Set current to queued round #${nextRoundNumber}`);
                 } else {
-                    console.warn('[rounds] Dequeue returned null unexpectedly. Staying between rounds.');
+                    logger.warn('[rounds] Dequeue returned null unexpectedly. Staying between rounds.');
                     setCurrentRound(null);
                 }
             } else {
@@ -159,26 +160,26 @@ export const saveRoundResults = (payload: EndRoundPayload): RoundHistory[] | nul
                     const nextRoundNumber = history.length + 1;
                     setCurrentRound({ ...draft, number: nextRoundNumber });
                     setNextRoundDraft(null);
-                    console.log('[rounds] No queued round. Using saved draft for next round.');
+                    logger.info('[rounds] No queued round. Using saved draft for next round.');
                 } else {
-                    console.log('[rounds] No queued round or draft. Remaining between rounds.');
+                    logger.info('[rounds] No queued round or draft. Remaining between rounds.');
                     setCurrentRound(null);
                 }
             }
         } else {
             // Default behavior: go to between-rounds state
-            console.log('[rounds] Game not live; not auto-advancing.');
+            logger.info('[rounds] Game not live; not auto-advancing.');
             setCurrentRound(null);
         }
 
         // TODO: Reset timer if it was started
         // resetTimer();
 
-        console.log(`Saved results for round ${currentRound.number}`);
-        console.log('Round points:', payload.points);
+        logger.info(`Saved results for round ${currentRound.number}`);
+        logger.info('Round points:', payload.points);
         return history;
     } catch (error) {
-        console.error('Damn it! Error saving round results:', error);
+        logger.error('Damn it! Error saving round results:', error);
         return null;
     }
 };
@@ -223,10 +224,10 @@ export const startGame = (): boolean => {
         }
 
         // No valid config to start
-        console.warn('startGame called but no valid nextRoundDraft or upcoming found');
+        logger.warn('startGame called but no valid nextRoundDraft or upcoming found');
         return false;
     } catch (error) {
-        console.error('Error in startGame lifecycle:', error);
+        logger.error('Error in startGame lifecycle:', error);
         return false;
     }
 };
@@ -278,10 +279,10 @@ export const finishGame = (): string | null => {
         // Also clear current active round to placeholder between-rounds state
         setCurrentRound(null);
 
-        console.log(`Match report generated at: ${filePath}`);
+        logger.info(`Match report generated at: ${filePath}`);
         return filePath;
     } catch (error) {
-        console.error('Error in finishGame lifecycle:', error);
+        logger.error('Error in finishGame lifecycle:', error);
         return null;
     }
 };
@@ -301,10 +302,10 @@ export const resetRounds = (): boolean => {
         // TODO: Reset timer if it was active
         // resetTimer();
 
-        console.log('Reset all rounds');
+        logger.info('Reset all rounds');
         return true;
     } catch (error) {
-        console.error('Fucking hell! Error resetting rounds:', error);
+        logger.error('Fucking hell! Error resetting rounds:', error);
         return false;
     }
 };

@@ -1,3 +1,4 @@
+import { logger } from '../config/logger';
 import { Team, UpdateTeamPayload } from '../../types/team.types';
 import { getState, updateState } from './index'; // Will create this later
 
@@ -32,7 +33,7 @@ export const updateScore = (teamId: 'team1' | 'team2', action: 'increment' | 'de
     // Only allow manual increments when in manual mode
     const mode = currentState.scoringMode || 'round';
     if (mode !== 'manual') {
-        console.warn(`Ignoring manual score update in '${mode}' mode`);
+        logger.warn(`Ignoring manual score update in '${mode}' mode`);
         return;
     }
 

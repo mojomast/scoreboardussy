@@ -1,3 +1,4 @@
+import { logger } from '../../config/logger';
 import { RoundState } from '../../../types/rounds.types';
 import { getInitialRoundState, setRoundState } from './state';
 import fs from 'fs';
@@ -21,10 +22,10 @@ export const persistRoundState = (
             fs.mkdirSync(DATA_DIR, { recursive: true });
         }
         fs.writeFileSync(ROUND_DATA_FILE, JSON.stringify({ rounds }, null, 2));
-        console.log('Unified rounds state persisted to file system');
+        logger.info('Unified rounds state persisted to file system');
         return true;
     } catch (error) {
-        console.error('Error persisting unified rounds state:', error);
+        logger.error('Error persisting unified rounds state:', error);
         return false;
     }
 };
@@ -38,14 +39,14 @@ export const loadPersistedRoundState = (): boolean => {
         if (fs.existsSync(ROUND_DATA_FILE)) {
             const { rounds } = JSON.parse(fs.readFileSync(ROUND_DATA_FILE, 'utf-8'));
             setRoundState(rounds);
-            console.log('Unified rounds state loaded from file system');
+            logger.info('Unified rounds state loaded from file system');
             return true;
         } else {
-            console.log('No persisted unified rounds state found, using defaults');
+            logger.info('No persisted unified rounds state found, using defaults');
             return false;
         }
     } catch (error) {
-        console.error('Error loading persisted unified rounds state:', error);
+        logger.error('Error loading persisted unified rounds state:', error);
         resetToDefaults();
         return false;
     }
@@ -59,11 +60,11 @@ export const clearPersistedRoundState = (): boolean => {
     try {
         if (fs.existsSync(ROUND_DATA_FILE)) {
             fs.unlinkSync(ROUND_DATA_FILE);
-            console.log('Cleared persisted unified rounds state from file system');
+            logger.info('Cleared persisted unified rounds state from file system');
         }
         return true;
     } catch (error) {
-        console.error('Error clearing persisted unified rounds state:', error);
+        logger.error('Error clearing persisted unified rounds state:', error);
         return false;
     }
 };
@@ -74,7 +75,7 @@ export const clearPersistedRoundState = (): boolean => {
 const resetToDefaults = (): void => {
     const initialState = getInitialRoundState();
     setRoundState(initialState);
-    console.log('Reset to default unified rounds state due to loading error');
+    logger.info('Reset to default unified rounds state due to loading error');
 };
 
 /**

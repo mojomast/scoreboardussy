@@ -1,3 +1,4 @@
+import { logger } from '../../config/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { 
     RoundTemplate, 
@@ -136,7 +137,7 @@ export const initializeDefaultTemplates = (): void => {
                 templates: defaultTemplates
             }
         });
-        console.log('Default templates initialized');
+        logger.info('Default templates initialized');
     }
 };
 
@@ -162,7 +163,7 @@ export const saveTemplate = (payload: SaveTemplatePayload): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error saving template:', error);
+        logger.error('Error saving template:', error);
         return false;
     }
 };
@@ -190,7 +191,7 @@ export const updateTemplate = (id: string, updates: Partial<RoundTemplate>): boo
 
         return true;
     } catch (error) {
-        console.error('Error updating template:', error);
+        logger.error('Error updating template:', error);
         return false;
     }
 };
@@ -210,7 +211,7 @@ export const deleteTemplate = (id: string): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error deleting template:', error);
+        logger.error('Error deleting template:', error);
         return false;
     }
 };
@@ -245,7 +246,7 @@ export const createPlaylist = (payload: CreatePlaylistPayload): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error creating playlist:', error);
+        logger.error('Error creating playlist:', error);
         return false;
     }
 };
@@ -274,7 +275,7 @@ export const updatePlaylist = (id: string, updates: Partial<RoundPlaylist>): boo
 
         return true;
     } catch (error) {
-        console.error('Error updating playlist:', error);
+        logger.error('Error updating playlist:', error);
         return false;
     }
 };
@@ -299,7 +300,7 @@ export const deletePlaylist = (id: string): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error deleting playlist:', error);
+        logger.error('Error deleting playlist:', error);
         return false;
     }
 };
@@ -331,7 +332,7 @@ export const startPlaylist = (id: string): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error starting playlist:', error);
+        logger.error('Error starting playlist:', error);
         return false;
     }
 };
@@ -377,7 +378,7 @@ export const nextInPlaylist = (): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error advancing playlist:', error);
+        logger.error('Error advancing playlist:', error);
         return false;
     }
 };
@@ -413,7 +414,7 @@ export const previousInPlaylist = (): boolean => {
 
         return true;
     } catch (error) {
-        console.error('Error moving to previous round:', error);
+        logger.error('Error moving to previous round:', error);
         return false;
     }
 };
